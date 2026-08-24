@@ -24,6 +24,7 @@ import { QuickCaptureModal } from './components/QuickCaptureModal';
 import { TaskDetailModal } from './components/TaskDetailModal';
 import { ThemeManagerModal } from './components/ThemeManagerModal';
 import { WallpaperSelectorModal } from './components/WallpaperSelectorModal';
+import { AICopilotPlanModal } from './components/AICopilotPlanModal';
 import { Plus } from 'lucide-react';
 
 const MainContent: React.FC = () => {
@@ -95,6 +96,7 @@ const MainContent: React.FC = () => {
       <TaskDetailModal />
       <ThemeManagerModal />
       <WallpaperSelectorModal />
+      <AICopilotPlanModal />
     </div>
   );
 };

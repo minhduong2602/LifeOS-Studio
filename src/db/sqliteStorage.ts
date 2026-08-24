@@ -820,6 +820,12 @@ export class SQLiteStorageEngine {
     return true;
   }
 
+  public setTimeBlocks(blocks: TimeBlock[]): void {
+    this.inMemoryCache.timeBlocks = [...blocks];
+    this.save(STORAGE_KEYS.TIME_BLOCKS, this.inMemoryCache.timeBlocks);
+    this.notify();
+  }
+
   // --- Settings Methods ---
   public getSetting(key: string, fallback: string = ''): string {
     return this.inMemoryCache.settings[key] ?? fallback;

@@ -18,6 +18,8 @@ import {
   WallpaperOption,
   ImageNoteItem,
   LectureItem,
+  UserEnergyProfile,
+  AIPerformancePlan,
 } from '../types';
 import { sqliteEngine, DEFAULT_WALLPAPERS } from '../db/sqliteStorage';
 
@@ -206,6 +208,16 @@ interface AppContextType {
   toggleTimeBlock: (id: string) => void;
   addTimeBlock: (tb: Omit<TimeBlock, 'id'>) => TimeBlock;
   deleteTimeBlock: (id: string) => void;
+  setTimeBlocks: (blocks: TimeBlock[]) => void;
+  applyAISchedule: (newTimeBlocks: Array<Omit<TimeBlock, 'id'> | TimeBlock>, clearExisting?: boolean) => void;
+  clearTimeBlocks: () => void;
+
+  // AI Copilot & Energy Profile
+  isPlanModalOpen: boolean;
+  setIsPlanModalOpen: (open: boolean) => void;
+  energyProfile: UserEnergyProfile;
+  setEnergyProfile: (profile: UserEnergyProfile) => void;
+  updateEnergyProfile: (updates: Partial<UserEnergyProfile>) => void;
 
   // Cloud & Backup Actions
   createBackup: (name?: string) => CloudBackupSnapshot;
@@ -230,6 +242,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [wallpapers] = useState<WallpaperOption[]>(() => sqliteEngine.getWallpapers());
   const [activeWallpaper, setActiveWallpaperState] = useState<string>(() => sqliteEngine.getActiveWallpaper());
   const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+
+  // User Energy Profile for AI Copilot
+  const [energyProfile, setEnergyProfileState] = useState<UserEnergyProfile>(() => {
+    const saved = sqliteEngine.getSetting('user_energy_profile');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // fallback
+      }
+    }
+    return {
+      workStart: '08:30',
+      workEnd: '18:00',
+      lunchStart: '12:00',
+      lunchDurationMinutes: 60,
+      peakFocusPeriod: 'morning',
+      bufferMinutes: 10,
+    };
+  });
+
+  const updateEnergyProfile = useCallback((updates: Partial<UserEnergyProfile>) => {
+    setEnergyProfileState((prev) => {
+      const next = { ...prev, ...updates };
+      sqliteEngine.setSetting('user_energy_profile', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const setEnergyProfile = useCallback((profile: UserEnergyProfile) => {
+    setEnergyProfileState(profile);
+    sqliteEngine.setSetting('user_energy_profile', JSON.stringify(profile));
+  }, []);
 
   // Theme state backed by SQLite
   const [theme, setThemeState] = useState<ThemePalette>(() => {
@@ -524,6 +570,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     sqliteEngine.deleteTimeBlock(id);
   };
 
+  const setTimeBlocksCustom = (blocks: TimeBlock[]) => {
+    sqliteEngine.setTimeBlocks(blocks);
+  };
+
+  const applyAISchedule = (newBlocks: Array<Omit<TimeBlock, 'id'> | TimeBlock>, clearExisting: boolean = true) => {
+    const formatted: TimeBlock[] = newBlocks.map((b, idx) => ({
+      ...b,
+      id: (b as TimeBlock).id || `tb-ai-${Date.now()}-${idx}`,
+      completed: (b as TimeBlock).completed ?? false,
+      isAutoPlanned: true,
+    }));
+    if (clearExisting) {
+      sqliteEngine.setTimeBlocks(formatted);
+    } else {
+      const merged = [...sqliteEngine.getTimeBlocks(), ...formatted];
+      sqliteEngine.setTimeBlocks(merged);
+    }
+    triggerCelebration();
+  };
+
+  const clearTimeBlocks = () => {
+    sqliteEngine.setTimeBlocks([]);
+  };
+
   // Cloud & Backup
   const createBackup = (name?: string) => {
     return sqliteEngine.createBackup(name);
@@ -560,6 +630,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveWallpaper,
         isWallpaperModalOpen,
         setIsWallpaperModalOpen,
+        isPlanModalOpen,
+        setIsPlanModalOpen,
+        energyProfile,
+        setEnergyProfile,
+        updateEnergyProfile,
         activeView,
         setActiveView,
         selectedPageId,
@@ -612,6 +687,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleTimeBlock,
         addTimeBlock,
         deleteTimeBlock,
+        setTimeBlocks: setTimeBlocksCustom,
+        applyAISchedule,
+        clearTimeBlocks,
         createBackup,
         restoreBackup,
         deleteBackup,

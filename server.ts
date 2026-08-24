@@ -124,6 +124,144 @@ Request: "${prompt}"`,
     }
   });
 
+  app.post('/api/ai-planner', async (req, res) => {
+    try {
+      const {
+        tasks = [],
+        habits = [],
+        lectures = [],
+        currentTime,
+        currentDate,
+        energyProfile,
+        recalibrationPrompt,
+        currentBlocks = [],
+      } = req.body;
+
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
+      });
+
+      const profile = {
+        workStart: energyProfile?.workStart || '08:30',
+        workEnd: energyProfile?.workEnd || '18:00',
+        lunchStart: energyProfile?.lunchStart || '12:00',
+        lunchDurationMinutes: energyProfile?.lunchDurationMinutes || 60,
+        peakFocusPeriod: energyProfile?.peakFocusPeriod || 'morning',
+        bufferMinutes: energyProfile?.bufferMinutes || 10,
+      };
+
+      const promptContent = `You are the Master Executive Copilot & Daily Planning Engine for LifeOS Studio.
+Generate an optimal, realistic, and energizing daily schedule from the user's tasks, habits, and study items.
+
+CURRENT CONTEXT:
+- Date: ${currentDate || new Date().toDateString()}
+- Current Time: ${currentTime || '08:30'}
+- Workday Window: ${profile.workStart} to ${profile.workEnd}
+- Lunch: ${profile.lunchStart} (${profile.lunchDurationMinutes} mins)
+- Peak Focus Period: ${profile.peakFocusPeriod} (Place deep work, high priority tasks here)
+- Buffer Between Intense Blocks: ${profile.bufferMinutes} mins
+
+INPUT DATA:
+- Active Tasks to schedule: ${JSON.stringify(tasks)}
+- Daily Habits to weave in: ${JSON.stringify(habits)}
+- Lectures/Study items: ${JSON.stringify(lectures)}
+- Existing/Current Blocks: ${JSON.stringify(currentBlocks)}
+${recalibrationPrompt ? `- User's Specific Custom Instruction / Recalibration Request: "${recalibrationPrompt}"` : ''}
+
+SCHEDULING RULES:
+1. Priority & Energy Alignment: Schedule 'urgent' and 'high' priority tasks first during peak focus periods (${profile.peakFocusPeriod}).
+2. Realistic Time Slots: Form formatted slots like "08:30 - 09:30", "09:40 - 10:40" (respecting buffer gaps).
+3. Wellness & Habits: Weave in relevant daily habits (e.g. workout, meditation, reading) and protect the lunch slot at ${profile.lunchStart}.
+4. Burnout Prevention: If total deep work exceeds 5 hours, flag burnoutRiskScore as 'moderate' or 'high', and defer lower-priority tasks to 'unplacedTasks'.
+5. Clear Rationale: Provide a brief 1-sentence 'rationale' for each timeblock explaining why it was placed there.
+6. Link IDs: If a timeblock corresponds to an input task, habit, or lecture, include its 'taskId', 'habitId', or 'lectureId'.
+
+Return valid JSON matching the schema.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: promptContent,
+        config: {
+          systemInstruction: "You are an elite productivity strategist and executive life copilot. You optimize daily schedules balancing peak cognitive performance, deep work, essential habits, and rest.",
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              strategySummary: {
+                type: Type.STRING,
+                description: "Executive briefing of the day's strategic plan and focus emphasis."
+              },
+              totalDeepWorkMinutes: {
+                type: Type.NUMBER,
+                description: "Total scheduled deep work duration in minutes."
+              },
+              burnoutRiskScore: {
+                type: Type.STRING,
+                description: "Risk of cognitive exhaustion: 'low', 'moderate', or 'high'."
+              },
+              coachAdvice: {
+                type: Type.STRING,
+                description: "Actionable, motivating coaching tip for maximum focus and flow today."
+              },
+              timeBlocks: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    timeSlot: { type: Type.STRING, description: "Formatted slot (e.g. '08:30 - 09:30')" },
+                    title: { type: Type.STRING, description: "Concise title of the activity" },
+                    category: { 
+                      type: Type.STRING, 
+                      description: "Category: 'deep_work', 'meeting', 'admin', 'break', or 'personal'" 
+                    },
+                    taskId: { type: Type.STRING, description: "ID of associated task if applicable" },
+                    habitId: { type: Type.STRING, description: "ID of associated habit if applicable" },
+                    lectureId: { type: Type.STRING, description: "ID of associated lecture if applicable" },
+                    rationale: { type: Type.STRING, description: "Why this was scheduled here" }
+                  },
+                  required: ['timeSlot', 'title', 'category', 'rationale']
+                }
+              },
+              unplacedTasks: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    reason: { type: Type.STRING }
+                  },
+                  required: ['title', 'reason']
+                }
+              }
+            },
+            required: ['strategySummary', 'totalDeepWorkMinutes', 'burnoutRiskScore', 'coachAdvice', 'timeBlocks']
+          }
+        }
+      });
+
+      let jsonOutput = response.text || "{}";
+      const jsonMatch = jsonOutput.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonOutput = jsonMatch[0];
+      }
+      const planResult = JSON.parse(jsonOutput);
+      res.json(planResult);
+    } catch (error: any) {
+      console.error('Error generating AI schedule plan:', error);
+      res.status(500).json({ error: 'Failed to generate AI schedule plan', details: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

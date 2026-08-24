@@ -19,7 +19,10 @@ import {
   Flame, 
   Target, 
   Sparkles,
-  Edit3
+  Edit3,
+  Zap,
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TimeBlock, Task } from '../types';
@@ -31,9 +34,11 @@ export const DailyAgenda: React.FC = () => {
     toggleTimeBlock,
     addTimeBlock,
     deleteTimeBlock,
+    clearTimeBlocks,
     triggerCelebration,
     updateTask,
     projects,
+    setIsPlanModalOpen,
   } = useApp();
 
   // Pomodoro timer state
@@ -200,8 +205,51 @@ export const DailyAgenda: React.FC = () => {
   const deepWorkBlock = smartSchedule.find(s => s.type === 'deep_work');
   const frogEnergyPhase = deepWorkBlock ? `Peak Focus Phase: ${deepWorkBlock.time}` : 'Adaptive Energy Phase Active';
 
+  // Schedule Drift Detection: check for uncompleted blocks whose scheduled end time has passed
+  const scheduleDrift = useMemo(() => {
+    if (timeBlocks.length === 0) return null;
+    const now = new Date();
+    const currentHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    
+    const overdue = timeBlocks.filter(tb => {
+      if (tb.completed) return false;
+      const parts = tb.timeSlot.split('-');
+      if (parts.length === 2) {
+        const end = parts[1].trim();
+        return end < currentHM;
+      }
+      return false;
+    });
+
+    return overdue.length > 0 ? overdue : null;
+  }, [timeBlocks]);
+
   return (
     <div className="h-full flex flex-col p-4 md:p-6 overflow-y-auto bg-stone-50/50 dark:bg-stone-950 space-y-6">
+      {/* Dynamic Schedule Drift Alert Banner */}
+      {scheduleDrift && (
+        <div className="p-3.5 bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/15 border border-amber-300 dark:border-amber-700/60 rounded-xl flex items-center justify-between gap-3 text-xs shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2.5 text-amber-900 dark:text-amber-200">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+              <Zap className="w-4 h-4 fill-current" />
+            </div>
+            <div>
+              <span className="font-bold">Schedule Drift Detected:</span>{' '}
+              <span className="text-stone-700 dark:text-stone-300">
+                You have {scheduleDrift.length} past unfinished slot{scheduleDrift.length > 1 ? 's' : ''}. Let Copilot shift your afternoon.
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsPlanModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold flex items-center gap-1.5 transition-all shadow-xs hover:scale-105 active:scale-95 shrink-0"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>⚡ Recalibrate Day</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Banner: Eat That Frog, Smart Schedule & Focus Sprint Timer */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {/* Eat That Frog Card */}
@@ -224,84 +272,133 @@ export const DailyAgenda: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
-                🎉 All top priority tasks for today are completed! Great job.
+              <div className="mt-2 text-xs text-stone-500 dark:text-stone-400 italic">
+                No high-priority task active. Create or mark a task as High/Urgent.
               </div>
             )}
           </div>
-          
-          <div className="mt-3">
-             {frogTask && (
-                <button
-                  onClick={() => {
-                    updateTask(frogTask.id, { status: 'done' });
-                    triggerCelebration();
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-xs flex items-center space-x-1 mb-3 w-max"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Mark Done</span>
-                </button>
-             )}
-            <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/40 flex flex-wrap items-center justify-between text-[11px] text-amber-700 dark:text-amber-400 gap-2">
-              <span>{frogEnergyPhase}</span>
-              <span>Zero Distraction Rule</span>
-            </div>
+
+          <div className="mt-4 pt-3 border-t border-amber-200/50 dark:border-amber-900/40 flex items-center justify-between text-xs">
+            <span className="text-stone-600 dark:text-stone-400 font-medium">
+              {frogEnergyPhase}
+            </span>
+            {frogTask && (
+              <button
+                onClick={() => updateTask(frogTask.id, { status: 'done' })}
+                className="text-amber-700 dark:text-amber-300 hover:underline font-semibold flex items-center space-x-1"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Mark Done</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* AI Smart Schedule Insight */}
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
+        {/* AI Copilot & Focus Cadence Card */}
+        <div className="bg-linear-to-r from-indigo-500/10 via-purple-500/10 to-blue-500/10 border border-indigo-200 dark:border-indigo-900/60 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
           <div>
-            <div className="flex items-center justify-between text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-3">
-              <div className="flex items-center space-x-2">
-                <Sparkles className="w-4 h-4 text-blue-500" />
-                <span>AI Smart Schedule</span>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center space-x-2 text-xs font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">
+                <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                <span>Executive Copilot Plan</span>
               </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 font-medium border border-indigo-500/30">
+                AI Powered
+              </span>
             </div>
-            
-            <div className="space-y-2.5">
-              {smartSchedule.slice(0, 4).map(s => (
-                <div key={s.label} className="flex justify-between items-center text-xs">
-                  <span className="font-medium text-stone-700 dark:text-stone-300">{s.label}</span>
-                  <span className="text-stone-500 dark:text-stone-400 font-mono tracking-tight">{s.time}</span>
-                </div>
-              ))}
-            </div>
+
+            <p className="text-xs text-stone-600 dark:text-stone-400 mt-1">
+              Auto-generate optimized timeblocks matching your peak focus curve and scheduled habits.
+            </p>
           </div>
-          <div className="mt-4 pt-2 border-t border-stone-100 dark:border-stone-800 text-[10px] text-stone-400">
-            Adapted from your behavior & energy patterns
+
+          <div className="mt-4 pt-3 border-t border-indigo-200/50 dark:border-indigo-900/40 flex items-center justify-between">
+            <button
+              onClick={() => setIsPlanModalOpen(true)}
+              className="w-full py-2 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-500/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>✨ Plan My Day with Copilot</span>
+            </button>
           </div>
         </div>
 
-        {/* Pomodoro Sprint Timer */}
-        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 flex flex-col items-center justify-center shadow-2xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-stone-400 mb-1">
-            {activeTimerMode === 'focus' ? '🧠 Deep Focus Sprint' : '☕ Recovery Break'}
+        {/* Pomodoro Focus Sprint Timer */}
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-xs font-bold text-stone-700 dark:text-stone-300 uppercase tracking-wider">
+              <Flame className="w-4 h-4 text-rose-500" />
+              <span>Focus Sprint Timer</span>
+            </div>
+
+            <div className="flex items-center space-x-1 text-xs">
+              <button
+                onClick={() => {
+                  setActiveTimerMode('focus');
+                  setTimerSeconds(25 * 60);
+                  setIsTimerRunning(false);
+                }}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  activeTimerMode === 'focus'
+                    ? 'bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300'
+                    : 'text-stone-500 hover:text-stone-700'
+                }`}
+              >
+                25m Focus
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTimerMode('break');
+                  setTimerSeconds(5 * 60);
+                  setIsTimerRunning(false);
+                }}
+                className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors ${
+                  activeTimerMode === 'break'
+                    ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-300'
+                    : 'text-stone-500 hover:text-stone-700'
+                }`}
+              >
+                5m Break
+              </button>
+            </div>
           </div>
 
-          <div className="text-3xl font-mono font-black text-stone-900 dark:text-stone-100 my-1">
-            {formatTimer(timerSeconds)}
+          <div className="my-2 flex items-center justify-center">
+            <div className="text-3xl font-black font-mono tracking-wider text-stone-900 dark:text-stone-100">
+              {formatTimer(timerSeconds)}
+            </div>
           </div>
 
-          <div className="flex items-center space-x-2 mt-2">
+          <div className="flex items-center justify-center space-x-2">
             <button
               onClick={() => setIsTimerRunning(!isTimerRunning)}
-              className={`p-2 rounded-full text-white shadow-xs transition-transform active:scale-95 ${
-                isTimerRunning ? 'bg-amber-500 hover:bg-amber-600' : 'bg-indigo-600 hover:bg-indigo-700'
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition-colors ${
+                isTimerRunning
+                  ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                  : 'bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 text-white dark:text-stone-900'
               }`}
             >
-              {isTimerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-white" />}
+              {isTimerRunning ? (
+                <>
+                  <Pause className="w-3.5 h-3.5" />
+                  <span>Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Start Focus</span>
+                </>
+              )}
             </button>
+
             <button
               onClick={() => {
                 setIsTimerRunning(false);
                 setTimerSeconds(activeTimerMode === 'focus' ? 25 * 60 : 5 * 60);
               }}
-              className="p-2 rounded-full bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 transition-colors"
-              title="Reset Timer"
+              className="px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-200 text-xs font-semibold"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -317,15 +414,40 @@ export const DailyAgenda: React.FC = () => {
               <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100">
                 Time-Blocked Schedule
               </h2>
+              <span className="text-xs text-stone-400">({timeBlocks.length} slots)</span>
             </div>
 
-            <button
-              onClick={() => setIsAddingBlock(true)}
-              className="text-xs bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 px-2.5 py-1 rounded-md flex items-center space-x-1 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Block</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsPlanModalOpen(true)}
+                className="text-xs bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/80 px-2.5 py-1 rounded-md flex items-center space-x-1.5 transition-colors font-medium"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>✨ Plan with Copilot</span>
+              </button>
+
+              <button
+                onClick={() => setIsAddingBlock(true)}
+                className="text-xs bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-300 px-2.5 py-1 rounded-md flex items-center space-x-1 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Block</span>
+              </button>
+
+              {timeBlocks.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm('Clear all schedule time blocks for today?')) {
+                      clearTimeBlocks();
+                    }
+                  }}
+                  className="text-xs text-stone-400 hover:text-rose-500 p-1 transition-colors"
+                  title="Clear all blocks"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* New Timeblock Inline Form */}
@@ -382,53 +504,88 @@ export const DailyAgenda: React.FC = () => {
 
           {/* Timeblocks List */}
           <div className="space-y-2">
-            {timeBlocks.map((tb) => (
-              <div
-                key={tb.id}
-                className={`flex items-center justify-between p-3 rounded-lg border transition-colors group ${
-                  tb.completed
-                    ? 'bg-stone-50 dark:bg-stone-900/40 border-stone-200 dark:border-stone-800 opacity-60'
-                    : 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 shadow-2xs'
-                }`}
-              >
-                <div className="flex items-center space-x-3 flex-1">
-                  <button
-                    onClick={() => {
-                      toggleTimeBlock(tb.id);
-                      if (!tb.completed) triggerCelebration();
-                    }}
-                    className="text-stone-400 hover:text-emerald-500 transition-colors shrink-0"
-                  >
-                    {tb.completed ? (
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    ) : (
-                      <Circle className="w-4 h-4" />
-                    )}
-                  </button>
-
-                  <div className="font-mono text-xs text-stone-500 dark:text-stone-400 min-w-[95px] shrink-0">
-                    {tb.timeSlot}
-                  </div>
-
-                  <div className={`text-xs font-medium text-stone-900 dark:text-stone-100 truncate ${tb.completed ? 'line-through text-stone-400' : ''}`}>
-                    {tb.title}
-                  </div>
+            {timeBlocks.length === 0 ? (
+              <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 bg-stone-50/50 dark:bg-stone-950/40 rounded-xl border border-dashed border-stone-300 dark:border-stone-800">
+                <Sparkles className="w-8 h-8 text-indigo-400 animate-pulse" />
+                <div>
+                  <p className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                    No time blocks planned for today yet.
+                  </p>
+                  <p className="text-[11px] text-stone-400 mt-0.5">
+                    Let AI organize your schedule based on your tasks, habits, and focus hours.
+                  </p>
                 </div>
-
-                <div className="flex items-center space-x-2 shrink-0">
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${getCategoryColor(tb.category)}`}>
-                    {tb.category.replace('_', ' ')}
-                  </span>
-                  <button
-                    onClick={() => deleteTimeBlock(tb.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-stone-400 hover:text-rose-500 transition-opacity"
-                    title="Delete block"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <button
+                  onClick={() => setIsPlanModalOpen(true)}
+                  className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Generate Schedule with Copilot</span>
+                </button>
               </div>
-            ))}
+            ) : (
+              timeBlocks.map((tb) => (
+                <div
+                  key={tb.id}
+                  className={`flex items-start justify-between p-3 rounded-lg border transition-colors group ${
+                    tb.completed
+                      ? 'bg-stone-50 dark:bg-stone-900/40 border-stone-200 dark:border-stone-800 opacity-60'
+                      : 'bg-white dark:bg-stone-800/80 border-stone-200 dark:border-stone-700 shadow-2xs'
+                  }`}
+                >
+                  <div className="flex items-start space-x-3 flex-1 min-w-0">
+                    <button
+                      onClick={() => {
+                        toggleTimeBlock(tb.id);
+                        if (!tb.completed) triggerCelebration();
+                      }}
+                      className="text-stone-400 hover:text-emerald-500 transition-colors shrink-0 mt-0.5"
+                    >
+                      {tb.completed ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      ) : (
+                        <Circle className="w-4 h-4" />
+                      )}
+                    </button>
+
+                    <div className="font-mono text-xs text-stone-500 dark:text-stone-400 min-w-[95px] shrink-0 mt-0.5">
+                      {tb.timeSlot}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-xs font-medium text-stone-900 dark:text-stone-100 ${tb.completed ? 'line-through text-stone-400' : ''}`}>
+                          {tb.title}
+                        </span>
+                        {tb.isAutoPlanned && (
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20 font-medium">
+                            AI
+                          </span>
+                        )}
+                      </div>
+                      {tb.rationale && (
+                        <p className="text-[11px] text-stone-400 mt-0.5 line-clamp-1">
+                          {tb.rationale}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 shrink-0 ml-2">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${getCategoryColor(tb.category)}`}>
+                      {tb.category.replace('_', ' ')}
+                    </span>
+                    <button
+                      onClick={() => deleteTimeBlock(tb.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1 text-stone-400 hover:text-rose-500 transition-opacity"
+                      title="Delete block"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

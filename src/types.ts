@@ -104,8 +104,41 @@ export interface TimeBlock {
   timeSlot: string; // "09:00 - 10:00"
   title: string;
   taskId?: string;
+  habitId?: string;
+  lectureId?: string;
   category: 'deep_work' | 'meeting' | 'admin' | 'break' | 'personal';
   completed: boolean;
+  rationale?: string;
+  isAutoPlanned?: boolean;
+}
+
+export interface UserEnergyProfile {
+  workStart: string; // "08:30"
+  workEnd: string;   // "18:00"
+  lunchStart: string; // "12:00"
+  lunchDurationMinutes: number; // 60
+  peakFocusPeriod: 'morning' | 'afternoon' | 'evening';
+  bufferMinutes: number; // 10
+}
+
+export interface AIPerformancePlan {
+  strategySummary: string;
+  totalDeepWorkMinutes: number;
+  burnoutRiskScore: 'low' | 'moderate' | 'high';
+  coachAdvice: string;
+  timeBlocks: Array<{
+    timeSlot: string;
+    title: string;
+    category: 'deep_work' | 'meeting' | 'admin' | 'break' | 'personal';
+    taskId?: string;
+    habitId?: string;
+    lectureId?: string;
+    rationale?: string;
+  }>;
+  unplacedTasks?: Array<{
+    title: string;
+    reason: string;
+  }>;
 }
 
 export interface SyncQueueItem {

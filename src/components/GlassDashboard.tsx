@@ -39,6 +39,7 @@ export const GlassDashboard: React.FC = () => {
     toggleHabit,
     isOnline,
     syncQueue,
+    setIsPlanModalOpen,
   } = useApp();
 
   const [quickInput, setQuickInput] = useState('');
@@ -119,6 +120,15 @@ export const GlassDashboard: React.FC = () => {
 
           {/* Quick Action Pills */}
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setIsPlanModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-xl border border-indigo-400/40 bg-indigo-600/50 px-3.5 py-1.5 text-xs font-bold text-white shadow-lg shadow-indigo-500/20 backdrop-blur-md transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
+              id="glass-copilot-btn"
+            >
+              <Sparkles className="h-4 w-4 text-indigo-200 animate-pulse" />
+              <span>✨ Copilot Plan</span>
+            </button>
+
             <button
               onClick={() => setIsWallpaperModalOpen(true)}
               className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white shadow-sm backdrop-blur-md transition-all hover:bg-white/20 hover:border-white/40 active:scale-95"
