@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   X, 
   Sparkles,
@@ -23,6 +23,7 @@ export const QuickCaptureModal: React.FC = () => {
     addHabit,
     triggerCelebration,
     projects,
+    tasks,
   } = useApp();
 
   const [prompt, setPrompt] = useState('');
@@ -30,6 +31,35 @@ export const QuickCaptureModal: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<'input' | 'preview'>('input');
   const [parsedData, setParsedData] = useState<any>(null);
+
+  // Routine Predictor Logic
+  const routines = useMemo(() => {
+    const counts: Record<string, { title: string; time?: string; duration?: number; count: number; project?: string }> = {};
+    tasks.forEach(t => {
+      if (!t.dueTime && !t.estimatedMinutes) return;
+      const key = t.title.toLowerCase().trim();
+      if (key.length < 3) return;
+
+      if (!counts[key]) {
+        counts[key] = { 
+          title: t.title, 
+          time: t.dueTime, 
+          duration: t.estimatedMinutes, 
+          project: t.projectId || t.tags?.[0],
+          count: 0 
+        };
+      }
+      counts[key].count++;
+    });
+    return Object.values(counts)
+      .filter(r => r.count >= 2)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [tasks]);
+
+  const suggestedRoutines = prompt.trim() === '' 
+    ? routines 
+    : routines.filter(r => r.title.toLowerCase().includes(prompt.toLowerCase().trim()));
 
   if (!isQuickCaptureOpen) return null;
 
@@ -41,10 +71,20 @@ export const QuickCaptureModal: React.FC = () => {
     setError(null);
 
     try {
+      const history = tasks
+        .filter(t => t.dueTime || t.estimatedMinutes)
+        .slice(-30)
+        .map(t => ({
+          title: t.title,
+          time: t.dueTime,
+          duration: t.estimatedMinutes,
+          project: t.projectId || t.tags?.[0]
+        }));
+
       const response = await fetch('/api/parse-task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim() }),
+        body: JSON.stringify({ prompt: prompt.trim(), history }),
       });
 
       if (!response.ok) {
@@ -179,6 +219,55 @@ export const QuickCaptureModal: React.FC = () => {
                 }}
               />
               
+              {/* Routine Predictor Suggestions */}
+              {suggestedRoutines.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2 animate-in fade-in duration-200">
+                  {suggestedRoutines.map((routine, idx) => {
+                    const today = new Date();
+                    let targetDate = new Date();
+                    let isTomorrow = false;
+                    if (routine.time) {
+                      const [h, m] = routine.time.split(':').map(Number);
+                      if (today.getHours() > h || (today.getHours() === h && today.getMinutes() > m)) {
+                        targetDate.setDate(today.getDate() + 1);
+                        isTomorrow = true;
+                      }
+                    }
+
+                    const timeStr = routine.time || '';
+                    const durStr = routine.duration ? `${routine.duration} min` : '';
+                    const detailStr = [isTomorrow ? 'Tomorrow' : 'Today', timeStr, durStr].filter(Boolean).join(' · ');
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setParsedData({
+                            type: 'task',
+                            title: routine.title,
+                            dueDate: targetDate.toLocaleDateString('sv-SE'),
+                            dueTime: routine.time,
+                            estimatedMinutes: routine.duration,
+                            project: routine.project,
+                            priority: 'medium',
+                            inferredFromHistory: true
+                          });
+                          setMode('preview');
+                        }}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium transition-all text-left group"
+                      >
+                        <Sparkles className="w-3 h-3 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
+                        <div>
+                          <span className="font-bold">{routine.title}</span>
+                          {detailStr && <span className="opacity-70 ml-1.5 font-normal tracking-tight">{detailStr}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               {error && (
                 <div className="text-red-500 text-xs px-2 mt-2">
                   Error: {error}
@@ -217,6 +306,12 @@ export const QuickCaptureModal: React.FC = () => {
           ) : (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <div className="px-1 space-y-1.5">
+                {parsedData?.inferredFromHistory && (
+                  <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md mb-1">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Schedule like usual</span>
+                  </div>
+                )}
                 <h4 className="text-xl font-semibold text-stone-900 dark:text-stone-100 leading-tight">
                   {parsedData?.title}
                 </h4>

@@ -16,7 +16,7 @@ async function startServer() {
 
   app.post('/api/parse-task', async (req, res) => {
     try {
-      const { prompt } = req.body;
+      const { prompt, history } = req.body;
       if (!prompt) {
         return res.status(400).json({ error: 'Prompt is required' });
       }
@@ -39,9 +39,12 @@ async function startServer() {
         model: 'gemma-4-31b-it',
         contents: `Parse the following natural language request into a task object. The user is asking to do something or add something to their Life OS. Convert their natural language into structured data. Return ONLY valid JSON matching the schema. 
 Current Date & Time: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })}
+User History (Patterns): ${JSON.stringify(history || [])}
+
+Instructions: If the user request is brief (e.g. "Gym") and matches a pattern in the User History, infer the typical time, duration, and project from the history. If you infer anything from history, set 'inferredFromHistory' to true.
 Request: "${prompt}"`,
         config: {
-          systemInstruction: "You are a highly intelligent task parser for a personal operating system. Interpret user intents (often in Vietnamese or English) into precise task data. Resolve relative dates like 'tomorrow' using the provided Current Date.",
+          systemInstruction: "You are a highly intelligent task parser for a personal operating system. Interpret user intents (often in Vietnamese or English) into precise task data. Resolve relative dates like 'tomorrow' using the provided Current Date. Learn from User History patterns when details are omitted.",
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -78,6 +81,10 @@ Request: "${prompt}"`,
               priority: {
                 type: Type.STRING,
                 description: "Priority of the task: 'low', 'medium', 'high', or 'urgent'. Default is 'medium'.",
+              },
+              inferredFromHistory: {
+                type: Type.BOOLEAN,
+                description: "Set to true if time or duration was inferred from User History instead of explicitly stated in the prompt."
               }
             },
             required: ['type', 'title'],
