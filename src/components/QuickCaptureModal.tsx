@@ -8,7 +8,12 @@ import {
   Clock,
   Tag,
   Folder,
-  Check
+  Check,
+  MapPin,
+  CloudRain,
+  Moon,
+  Coffee,
+  Info
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TaskPriority } from '../types';
@@ -24,6 +29,7 @@ export const QuickCaptureModal: React.FC = () => {
     triggerCelebration,
     projects,
     tasks,
+    timeBlocks,
   } = useApp();
 
   const [prompt, setPrompt] = useState('');
@@ -57,6 +63,55 @@ export const QuickCaptureModal: React.FC = () => {
       .slice(0, 5);
   }, [tasks]);
 
+  const contextSuggestion = useMemo(() => {
+    const p = prompt.toLowerCase();
+    if (!p.trim()) return null;
+
+    const date = new Date();
+    const hour = date.getHours();
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+    // Rule 1: Late night activities
+    if (hour >= 21 && (p.includes('gym') || p.includes('workout') || p.includes('coffee') || p.includes('cà phê') || p.includes('cafe'))) {
+      return {
+        icon: <Moon className="w-4 h-4 text-indigo-500" />,
+        text: "It's getting late. Consider a lighter activity or decaf to ensure good sleep.",
+        style: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/30"
+      };
+    }
+
+    // Rule 2: Weekend work
+    if (isWeekend && (p.includes('họp') || p.includes('meeting') || p.includes('báo cáo') || p.includes('report') || p.includes('bpo'))) {
+      return {
+        icon: <Coffee className="w-4 h-4 text-amber-500" />,
+        text: "It's the weekend! Try to keep work tasks minimal to recharge.",
+        style: "bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/30"
+      };
+    }
+
+    // Rule 3: Shopping / Bundling Errands
+    const shoppingKeywords = ['mua', 'buy', 'sữa', 'milk', 'siêu thị', 'grocery', 'mart'];
+    if (shoppingKeywords.some(k => p.includes(k))) {
+      return {
+        icon: <MapPin className="w-4 h-4 text-rose-500" />,
+        text: "You're heading out. Want to bundle this with your other Shopping items?",
+        style: "bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800/30"
+      };
+    }
+    
+    // Rule 4: Weather / Outdoor (Simulated)
+    const outdoorKeywords = ['chạy', 'run', 'outdoor', 'park', 'công viên'];
+    if (outdoorKeywords.some(k => p.includes(k))) {
+      return {
+        icon: <CloudRain className="w-4 h-4 text-sky-500" />,
+        text: "Outdoor activity might be inconvenient later. Check the weather or move indoors?",
+        style: "bg-sky-50 dark:bg-sky-900/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800/30"
+      };
+    }
+
+    return null;
+  }, [prompt]);
+
   const suggestedRoutines = prompt.trim() === '' 
     ? routines 
     : routines.filter(r => r.title.toLowerCase().includes(prompt.toLowerCase().trim()));
@@ -73,18 +128,20 @@ export const QuickCaptureModal: React.FC = () => {
     try {
       const history = tasks
         .filter(t => t.dueTime || t.estimatedMinutes)
-        .slice(-30)
+        .slice(-50)
         .map(t => ({
           title: t.title,
           time: t.dueTime,
           duration: t.estimatedMinutes,
           project: t.projectId || t.tags?.[0]
         }));
+        
+      const schedule = timeBlocks.map(tb => tb.timeSlot);
 
       const response = await fetch('/api/parse-task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim(), history }),
+        body: JSON.stringify({ prompt: prompt.trim(), history, schedule }),
       });
 
       if (!response.ok) {
@@ -96,6 +153,7 @@ export const QuickCaptureModal: React.FC = () => {
         ...data,
         type: data.type || 'task',
         priority: data.priority || 'medium',
+        dueTime: data.dueTime || data.suggestedTime, // Use suggested time if provided
       });
       setMode('preview');
     } catch (err: any) {
@@ -110,6 +168,18 @@ export const QuickCaptureModal: React.FC = () => {
     if (!parsedData) return;
     const data = parsedData;
 
+    let matchedProjectId: string | undefined = undefined;
+    const projectTags: string[] = data.tags || [];
+
+    if (data.project) {
+      const matched = projects.find(p => p.name.toLowerCase() === data.project.toLowerCase());
+      if (matched) {
+        matchedProjectId = matched.id;
+      } else {
+        projectTags.push(data.project);
+      }
+    }
+
     switch (data.type) {
       case 'task':
         addTask({
@@ -117,11 +187,11 @@ export const QuickCaptureModal: React.FC = () => {
           description: '',
           status: 'todo',
           priority: data.priority as TaskPriority,
-          projectId: data.projectId, // mapped if matched
+          projectId: matchedProjectId,
           dueDate: data.dueDate || undefined,
           dueTime: data.dueTime || undefined,
           estimatedMinutes: data.estimatedMinutes || undefined,
-          tags: data.tags || [],
+          tags: projectTags,
           subtasks: [],
           order: 0,
         });
@@ -219,6 +289,16 @@ export const QuickCaptureModal: React.FC = () => {
                 }}
               />
               
+              {/* Context Aware Suggestions */}
+              {contextSuggestion && (
+                <div className={`mt-3 p-3 rounded-xl border flex gap-2.5 items-start text-xs font-medium animate-in fade-in slide-in-from-top-2 duration-300 ${contextSuggestion.style}`}>
+                  <div className="mt-0.5 shrink-0 bg-white/50 dark:bg-black/20 p-1 rounded-md shadow-2xs">
+                    {contextSuggestion.icon}
+                  </div>
+                  <p className="leading-relaxed">{contextSuggestion.text}</p>
+                </div>
+              )}
+
               {/* Routine Predictor Suggestions */}
               {suggestedRoutines.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2 animate-in fade-in duration-200">
@@ -259,8 +339,19 @@ export const QuickCaptureModal: React.FC = () => {
                       >
                         <Sparkles className="w-3 h-3 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
                         <div>
-                          <span className="font-bold">{routine.title}</span>
-                          {detailStr && <span className="opacity-70 ml-1.5 font-normal tracking-tight">{detailStr}</span>}
+                          {prompt.trim() !== '' ? (
+                            <>
+                              <span className="font-bold">Schedule like usual?</span>
+                              <span className="opacity-70 ml-1.5 font-normal tracking-tight">
+                                {detailStr ? `(${routine.title} · ${detailStr})` : `(${routine.title})`}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="font-bold">{routine.title}</span>
+                              {detailStr && <span className="opacity-70 ml-1.5 font-normal tracking-tight">{detailStr}</span>}
+                            </>
+                          )}
                         </div>
                       </button>
                     );
@@ -305,6 +396,12 @@ export const QuickCaptureModal: React.FC = () => {
             </form>
           ) : (
             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {parsedData?.explanation && (
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-300 p-3 rounded-lg text-xs font-medium flex gap-2 items-start leading-relaxed border border-emerald-100 dark:border-emerald-800/30">
+                  <Sparkles className="w-4 h-4 mt-0.5 shrink-0" />
+                  <p>{parsedData.explanation}</p>
+                </div>
+              )}
               <div className="px-1 space-y-1.5">
                 {parsedData?.inferredFromHistory && (
                   <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md mb-1">

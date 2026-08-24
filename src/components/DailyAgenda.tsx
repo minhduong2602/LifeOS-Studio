@@ -1,4 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip as RechartsTooltip, 
+  Legend 
+} from 'recharts';
 import { 
   Clock, 
   CheckCircle2, 
@@ -14,7 +22,7 @@ import {
   Edit3
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { TimeBlock } from '../types';
+import { TimeBlock, Task } from '../types';
 
 export const DailyAgenda: React.FC = () => {
   const {
@@ -25,6 +33,7 @@ export const DailyAgenda: React.FC = () => {
     deleteTimeBlock,
     triggerCelebration,
     updateTask,
+    projects,
   } = useApp();
 
   // Pomodoro timer state
@@ -42,6 +51,35 @@ export const DailyAgenda: React.FC = () => {
   const [scratchpad, setScratchpad] = useState(() => {
     return localStorage.getItem('notionlife_daily_scratchpad') || '• Key priority for today: Ship Tauri Android offline sync\n• Reminder: Drink 2L water & take evening walk';
   });
+
+  // Task Category Breakdown for Time Spent
+  const categoryData = useMemo(() => {
+    // Look at tasks that have estimated or actual minutes (actual is preferred, but fallback to estimated)
+    const validTasks = tasks.filter(t => t.actualMinutes || t.estimatedMinutes);
+    const categoryTime: Record<string, number> = {};
+    
+    validTasks.forEach(task => {
+      // Prioritize actual time spent. Otherwise fallback to estimated time.
+      const time = task.actualMinutes || task.estimatedMinutes || 0;
+      if (time <= 0) return;
+      
+      let catName = 'Uncategorized';
+      if (task.projectId) {
+        const proj = projects.find(p => p.id === task.projectId);
+        if (proj) catName = proj.name;
+      } else if (task.tags && task.tags.length > 0) {
+        catName = task.tags[0];
+      }
+      
+      categoryTime[catName] = (categoryTime[catName] || 0) + time;
+    });
+
+    return Object.entries(categoryTime)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [tasks, projects]);
+
+  const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#64748b', '#06b6d4', '#d946ef'];
 
   useEffect(() => {
     let interval: any = null;
@@ -415,6 +453,46 @@ export const DailyAgenda: React.FC = () => {
             <span>Zero latency</span>
           </div>
         </div>
+      </div>
+      {/* Time Allocation Breakdown */}
+      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-5 shadow-2xs">
+        <div className="flex items-center space-x-2 mb-4">
+          <Circle className="w-4 h-4 text-emerald-500" />
+          <h2 className="text-sm font-bold text-stone-900 dark:text-stone-100">
+            Time Allocation Breakdown
+          </h2>
+        </div>
+        
+        {categoryData.length > 0 ? (
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={90}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <RechartsTooltip 
+                  formatter={(value: number) => [`${value} min`, 'Time']}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-64 w-full flex items-center justify-center text-sm text-stone-400 dark:text-stone-500">
+            No task data with estimated or actual minutes found.
+          </div>
+        )}
       </div>
     </div>
   );

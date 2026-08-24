@@ -16,7 +16,7 @@ async function startServer() {
 
   app.post('/api/parse-task', async (req, res) => {
     try {
-      const { prompt, history } = req.body;
+      const { prompt, history, schedule } = req.body;
       if (!prompt) {
         return res.status(400).json({ error: 'Prompt is required' });
       }
@@ -36,15 +36,21 @@ async function startServer() {
       });
 
       const response = await ai.models.generateContent({
-        model: 'gemma-4-31b-it',
+        model: 'gemini-2.5-flash',
         contents: `Parse the following natural language request into a task object. The user is asking to do something or add something to their Life OS. Convert their natural language into structured data. Return ONLY valid JSON matching the schema. 
 Current Date & Time: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' })}
 User History (Patterns): ${JSON.stringify(history || [])}
+Current Schedule (Today's timeblocks): ${JSON.stringify(schedule || [])}
 
-Instructions: If the user request is brief (e.g. "Gym") and matches a pattern in the User History, infer the typical time, duration, and project from the history. If you infer anything from history, set 'inferredFromHistory' to true.
+Instructions:
+1. Intent & Project: Extract the core intent. If a project is mentioned (e.g. "BPO"), extract it as 'project'. Assign priority based on task weight (e.g. presentations are 'high').
+2. Estimation: Predict 'estimatedMinutes'. Use User History if similar tasks exist. If not, use sensible defaults (Gym=45, Email=15, Presentation=90, Grocery=30).
+3. Smart Scheduling: If the user implies they need to do it at a specific day but no time is given (or if a time is missing), set 'needsSlot' to true. Look at the 'Current Schedule' gaps and suggest a free time slot in 'suggestedTime' (HH:mm format).
+4. Provide an 'explanation' string (e.g. "I found a 90-minute slot at 09:00 based on your schedule. Schedule it?").
+5. Set 'inferredFromHistory' if you used history to estimate the duration.
 Request: "${prompt}"`,
         config: {
-          systemInstruction: "You are a highly intelligent task parser for a personal operating system. Interpret user intents (often in Vietnamese or English) into precise task data. Resolve relative dates like 'tomorrow' using the provided Current Date. Learn from User History patterns when details are omitted.",
+          systemInstruction: "You are a highly intelligent AI assistant for a personal operating system. You don't just parse text; you understand intent, estimate task duration, and suggest optimal scheduling. Resolve relative dates like 'tomorrow' using the provided Current Date.",
           responseMimeType: 'application/json',
           responseSchema: {
             type: Type.OBJECT,
@@ -63,7 +69,7 @@ Request: "${prompt}"`,
               },
               dueTime: {
                 type: Type.STRING,
-                description: "The due time in HH:mm format if applicable.",
+                description: "The due time in HH:mm format if the user explicitly provided it.",
               },
               estimatedMinutes: {
                 type: Type.NUMBER,
@@ -71,7 +77,7 @@ Request: "${prompt}"`,
               },
               project: {
                 type: Type.STRING,
-                description: "The best fitting project or category name (e.g. 'Health', 'Work', 'Study').",
+                description: "The best fitting project or category name (e.g. 'Health', 'Work', 'BPO').",
               },
               tags: {
                 type: Type.ARRAY,
@@ -80,7 +86,19 @@ Request: "${prompt}"`,
               },
               priority: {
                 type: Type.STRING,
-                description: "Priority of the task: 'low', 'medium', 'high', or 'urgent'. Default is 'medium'.",
+                description: "Priority of the task: 'low', 'medium', 'high', or 'urgent'. Infer this intelligently.",
+              },
+              needsSlot: {
+                type: Type.BOOLEAN,
+                description: "Set to true if the task needs to be scheduled but no specific time was explicitly provided by the user."
+              },
+              suggestedTime: {
+                type: Type.STRING,
+                description: "A suggested time in HH:mm format, found by looking at Current Schedule gaps, if needsSlot is true."
+              },
+              explanation: {
+                type: Type.STRING,
+                description: "A conversational, brief assistant message explaining the estimation and suggested time. E.g. 'I estimated 90 mins for the presentation and found a slot at 09:00 AM. Schedule it?'"
               },
               inferredFromHistory: {
                 type: Type.BOOLEAN,
@@ -88,8 +106,8 @@ Request: "${prompt}"`,
               }
             },
             required: ['type', 'title'],
-          },
-        },
+          }
+        }
       });
 
       let jsonOutput = response.text || "{}";
