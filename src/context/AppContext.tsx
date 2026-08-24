@@ -20,10 +20,27 @@ import {
   LectureItem,
   UserEnergyProfile,
   AIPerformancePlan,
+  AIProviderConfig,
+  AIProviderType,
+  ProviderSpecificConfig,
 } from '../types';
 import { sqliteEngine, DEFAULT_WALLPAPERS } from '../db/sqliteStorage';
 
 export const AVAILABLE_THEMES: ThemeOption[] = [
+  {
+    id: 'kawaii',
+    name: 'Kawaii Pastel',
+    tagline: 'Tươi sáng, dễ thương với tông pastel hồng & mint',
+    icon: '🌸',
+    previewColors: {
+      bg: '#FFF8F0',
+      sidebar: '#FFF5EE',
+      card: '#ffffff',
+      primary: '#FF8FAB',
+      accent: '#A78BFA',
+      text: '#4A3728',
+    },
+  },
   {
     id: 'default',
     name: 'Notion Classic',
@@ -108,7 +125,51 @@ export const AVAILABLE_THEMES: ThemeOption[] = [
       text: '#faf5ff',
     },
   },
+  {
+    id: 'starbucks',
+    name: 'Starbucks Reserve',
+    tagline: 'Warm café cream canvas with four-tier Starbucks green & gold',
+    icon: '☕',
+    previewColors: {
+      bg: '#f2f0eb',
+      sidebar: '#edebe9',
+      card: '#ffffff',
+      primary: '#00754A',
+      accent: '#cba258',
+      text: '#1E3932',
+    },
+  },
 ];
+
+export const DEFAULT_AI_CONFIG: AIProviderConfig = {
+  activeProvider: 'gemini',
+  providers: {
+    gemini: {
+      apiKey: '',
+      model: 'gemini-2.5-flash',
+      baseUrl: '',
+      temperature: 0.2,
+    },
+    openrouter: {
+      apiKey: '',
+      model: 'google/gemini-2.5-flash',
+      baseUrl: 'https://openrouter.ai/api/v1/chat/completions',
+      temperature: 0.2,
+    },
+    openai: {
+      apiKey: '',
+      model: 'gpt-4o-mini',
+      baseUrl: 'https://api.openai.com/v1/chat/completions',
+      temperature: 0.2,
+    },
+    custom: {
+      apiKey: '',
+      model: 'llama3.3',
+      baseUrl: 'http://localhost:11434/v1',
+      temperature: 0.2,
+    },
+  },
+};
 
 interface AppContextType {
   // State
@@ -186,11 +247,14 @@ interface AppContextType {
 
   // Project Actions
   addProject: (proj: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Project;
+  updateProject: (id: string, updates: Partial<Project>) => void;
+  deleteProject: (id: string) => void;
 
   // Page Actions
   addPage: (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt' | 'synced'>) => Page;
   updatePage: (id: string, updates: Partial<Page>) => void;
   deletePage: (id: string) => void;
+  duplicatePage: (id: string) => Page | null;
   
   // Block Actions
   getPageBlocks: (pageId: string) => Block[];
@@ -218,6 +282,16 @@ interface AppContextType {
   energyProfile: UserEnergyProfile;
   setEnergyProfile: (profile: UserEnergyProfile) => void;
   updateEnergyProfile: (updates: Partial<UserEnergyProfile>) => void;
+
+  // Wide-Adapt AI Provider Configuration
+  aiConfig: AIProviderConfig;
+  setAIConfig: (cfg: AIProviderConfig) => void;
+  updateAIConfig: (updates: Partial<AIProviderConfig>) => void;
+  updateProviderConfig: (provider: AIProviderType, updates: Partial<ProviderSpecificConfig>) => void;
+  setActiveProvider: (provider: AIProviderType) => void;
+  getActiveAIConfig: () => { provider: AIProviderType; apiKey: string; model: string; baseUrl?: string; temperature?: number };
+  isAISettingsModalOpen: boolean;
+  setIsAISettingsModalOpen: (open: boolean) => void;
 
   // Cloud & Backup Actions
   createBackup: (name?: string) => CloudBackupSnapshot;
@@ -279,10 +353,110 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Theme state backed by SQLite
   const [theme, setThemeState] = useState<ThemePalette>(() => {
-    const saved = sqliteEngine.getSetting('theme_palette', 'default') as ThemePalette;
-    return saved || 'default';
+    const saved = sqliteEngine.getSetting('theme_palette', 'kawaii') as ThemePalette;
+    const initial = saved || 'kawaii';
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', initial);
+      if (['forest', 'midnight', 'sunset', 'nord', 'lavender'].includes(initial)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+    return initial;
   });
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+  const [isAISettingsModalOpen, setIsAISettingsModalOpen] = useState(false);
+
+  // Wide-Adapt AI Provider Configuration (Per-Provider Credentials)
+  const [aiConfig, setAIConfigState] = useState<AIProviderConfig>(() => {
+    const saved = sqliteEngine.getSetting('ai_provider_config');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.providers && parsed.activeProvider) {
+          return {
+            ...DEFAULT_AI_CONFIG,
+            ...parsed,
+            providers: {
+              ...DEFAULT_AI_CONFIG.providers,
+              ...parsed.providers,
+            },
+          };
+        }
+        // Migrate legacy flat structure
+        const legacyProvider: AIProviderType = (parsed.provider || parsed.activeProvider || 'gemini') as AIProviderType;
+        return {
+          ...DEFAULT_AI_CONFIG,
+          activeProvider: legacyProvider,
+          providers: {
+            ...DEFAULT_AI_CONFIG.providers,
+            [legacyProvider]: {
+              apiKey: parsed.apiKey || '',
+              model: parsed.model || DEFAULT_AI_CONFIG.providers[legacyProvider]?.model || 'gemini-2.5-flash',
+              baseUrl: parsed.baseUrl || DEFAULT_AI_CONFIG.providers[legacyProvider]?.baseUrl || '',
+              temperature: parsed.temperature ?? 0.2,
+            },
+          },
+        };
+      } catch (e) {}
+    }
+    return DEFAULT_AI_CONFIG;
+  });
+
+  const updateProviderConfig = useCallback((provider: AIProviderType, updates: Partial<ProviderSpecificConfig>) => {
+    setAIConfigState((prev) => {
+      const currentProviderCfg = prev.providers?.[provider] || DEFAULT_AI_CONFIG.providers[provider];
+      const next: AIProviderConfig = {
+        ...prev,
+        providers: {
+          ...prev.providers,
+          [provider]: {
+            ...currentProviderCfg,
+            ...updates,
+          },
+        },
+      };
+      sqliteEngine.setSetting('ai_provider_config', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const setActiveProvider = useCallback((provider: AIProviderType) => {
+    setAIConfigState((prev) => {
+      const next: AIProviderConfig = {
+        ...prev,
+        activeProvider: provider,
+      };
+      sqliteEngine.setSetting('ai_provider_config', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const getActiveAIConfig = useCallback(() => {
+    const active = aiConfig.activeProvider || 'gemini';
+    const cfg = aiConfig.providers?.[active] || DEFAULT_AI_CONFIG.providers[active] || DEFAULT_AI_CONFIG.providers.gemini;
+    return {
+      provider: active,
+      apiKey: cfg.apiKey || '',
+      model: cfg.model,
+      baseUrl: cfg.baseUrl,
+      temperature: cfg.temperature ?? 0.2,
+    };
+  }, [aiConfig]);
+
+  const updateAIConfig = useCallback((updates: Partial<AIProviderConfig>) => {
+    setAIConfigState((prev) => {
+      const next = { ...prev, ...updates };
+      sqliteEngine.setSetting('ai_provider_config', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const setAIConfig = useCallback((cfg: AIProviderConfig) => {
+    setAIConfigState(cfg);
+    sqliteEngine.setSetting('ai_provider_config', JSON.stringify(cfg));
+  }, []);
 
   // Default to the new glass dashboard view directly inspired by the user's uploaded screenshot
   const [activeView, setActiveView] = useState<ViewMode>('today');
@@ -299,15 +473,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine ?? true);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Set theme attribute on DOM
+  // Set theme attribute & dark class on DOM
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    if (['forest', 'midnight', 'sunset', 'nord', 'lavender'].includes(theme)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [theme]);
 
   const setTheme = useCallback((newTheme: ThemePalette) => {
     setThemeState(newTheme);
     sqliteEngine.setSetting('theme_palette', newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
+    if (['forest', 'midnight', 'sunset', 'nord', 'lavender'].includes(newTheme)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, []);
 
   // Sync engine listener
@@ -491,6 +675,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return sqliteEngine.addProject(proj);
   };
 
+  const updateProject = (id: string, updates: Partial<Project>) => {
+    sqliteEngine.updateProject(id, updates);
+  };
+
+  const deleteProject = (id: string) => {
+    sqliteEngine.deleteProject(id);
+    if (selectedProjectId === id) {
+      setSelectedProjectId('all');
+    }
+  };
+
   // Page actions
   const addPage = (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt' | 'synced'>) => {
     const p = sqliteEngine.addPage(page);
@@ -509,6 +704,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (selectedPageId === id) {
       setSelectedPageId(remaining.length > 0 ? remaining[0].id : null);
     }
+  };
+
+  const duplicatePage = (id: string) => {
+    const original = sqliteEngine.getPageById(id);
+    if (!original) return null;
+    const newPage = sqliteEngine.addPage({
+      title: `${original.title} (Copy)`,
+      icon: original.icon,
+      coverImage: original.coverImage,
+      parentId: original.parentId,
+      isFavorite: false,
+    });
+    // Duplicate its blocks
+    const originalBlocks = sqliteEngine.getBlocks(id);
+    originalBlocks.forEach((b) => {
+      sqliteEngine.addBlock({
+        pageId: newPage.id,
+        type: b.type,
+        content: b.content,
+        checked: b.checked,
+        order: b.order,
+        language: b.language,
+        calloutIcon: b.calloutIcon,
+      });
+    });
+    setSelectedPageId(newPage.id);
+    setActiveView('page');
+    return newPage;
   };
 
   // Block actions
@@ -635,6 +858,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         energyProfile,
         setEnergyProfile,
         updateEnergyProfile,
+        aiConfig,
+        setAIConfig,
+        updateAIConfig,
+        updateProviderConfig,
+        setActiveProvider,
+        getActiveAIConfig,
+        isAISettingsModalOpen,
+        setIsAISettingsModalOpen,
         activeView,
         setActiveView,
         selectedPageId,
@@ -673,9 +904,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteLecture,
         toggleLectureFavorite,
         addProject,
+        updateProject,
+        deleteProject,
         addPage,
         updatePage,
         deletePage,
+        duplicatePage,
         getPageBlocks,
         addBlock,
         updateBlock,

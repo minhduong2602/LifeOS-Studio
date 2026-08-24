@@ -59,13 +59,13 @@ export const WallpaperSelectorModal: React.FC = () => {
                 <ImageIcon className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-semibold tracking-tight text-white">Atmospheric Wallpapers</h3>
-                <p className="text-xs text-stone-400">Choose your backdrop aesthetic or supply a custom wallpaper</p>
+                <h3 className="text-base font-semibold tracking-tight text-white">Hình Nền Không Gian</h3>
+                <p className="text-xs text-stone-400">Chọn hình nền truyền cảm hứng hoặc dùng liên kết ảnh tùy chỉnh</p>
               </div>
             </div>
             <button
               onClick={() => setIsWallpaperModalOpen(false)}
-              className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-white/10 hover:text-white"
+              className="rounded-lg p-1.5 text-stone-400 transition-colors hover:bg-white/10 hover:text-white cursor-pointer"
               id="close-wallpaper-modal-btn"
             >
               <X className="h-5 w-5" />
@@ -84,7 +84,7 @@ export const WallpaperSelectorModal: React.FC = () => {
                     onClick={() => {
                       setActiveWallpaper(wp.url);
                     }}
-                    className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-all ${
+                    className={`group relative flex flex-col overflow-hidden rounded-xl border text-left transition-all cursor-pointer ${
                       isSelected
                         ? 'border-emerald-400 shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-400/40'
                         : 'border-white/10 hover:border-white/30 hover:shadow-md'
@@ -111,11 +111,6 @@ export const WallpaperSelectorModal: React.FC = () => {
                     <div className="p-3 bg-stone-900/80">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium text-white">{wp.name}</span>
-                        {wp.id === 'highland_mountain' && (
-                          <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 border border-emerald-500/30">
-                            Screenshot Style
-                          </span>
-                        )}
                       </div>
                       <p className="mt-1 text-xs text-stone-400 line-clamp-1">{wp.description}</p>
                     </div>
@@ -128,7 +123,7 @@ export const WallpaperSelectorModal: React.FC = () => {
             <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
               <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-stone-300">
                 <LinkIcon className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Custom Image URL</span>
+                <span>Nhập Liên Kết Ảnh Tùy Chỉnh (URL)</span>
               </div>
               <form onSubmit={handleApplyCustom} className="flex gap-2">
                 <input
@@ -144,11 +139,11 @@ export const WallpaperSelectorModal: React.FC = () => {
                 />
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-emerald-500"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-emerald-500 cursor-pointer"
                   id="apply-custom-wallpaper-btn"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
-                  Apply
+                  Áp dụng
                 </button>
               </form>
               {customError && <p className="text-xs text-rose-400">{customError}</p>}
@@ -157,13 +152,13 @@ export const WallpaperSelectorModal: React.FC = () => {
 
           {/* Footer */}
           <div className="flex items-center justify-between border-t border-white/10 bg-stone-950/60 px-6 py-3 text-xs text-stone-400">
-            <span>Backdrops persist in local SQLite storage</span>
+            <span>Hình nền được lưu an toàn trong SQLite</span>
             <button
               onClick={() => setIsWallpaperModalOpen(false)}
-              className="rounded-lg bg-white/10 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
+              className="rounded-lg bg-white/10 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20 cursor-pointer"
               id="done-wallpaper-btn"
             >
-              Done
+              Hoàn tất
             </button>
           </div>
         </motion.div>

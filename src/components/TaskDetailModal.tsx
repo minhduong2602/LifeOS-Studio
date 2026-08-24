@@ -105,17 +105,17 @@ export const TaskDetailModal: React.FC = () => {
                   triggerCelebration();
                 }
               }}
-              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border transition-all"
+              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border transition-all cursor-pointer"
             >
               {task.status === 'done' ? (
                 <>
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                  <span className="text-emerald-600 dark:text-emerald-400">Completed</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">Đã hoàn thành</span>
                 </>
               ) : (
                 <>
                   <Circle className="w-4 h-4 text-stone-400" />
-                  <span className="text-stone-700 dark:text-stone-300">Mark as Done</span>
+                  <span className="text-stone-700 dark:text-stone-300">Đánh dấu hoàn thành</span>
                 </>
               )}
             </button>
@@ -124,18 +124,18 @@ export const TaskDetailModal: React.FC = () => {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => {
-                if (confirm(`Delete task "${task.title}"?`)) {
+                if (confirm(`Xóa nhiệm vụ "${task.title}"?`)) {
                   deleteTask(task.id);
                 }
               }}
-              className="p-1.5 text-stone-400 hover:text-rose-500 rounded-md"
-              title="Delete Task"
+              className="p-1.5 text-stone-400 hover:text-rose-500 rounded-md cursor-pointer"
+              title="Xóa nhiệm vụ"
             >
               <Trash2 className="w-4 h-4" />
             </button>
             <button
               onClick={() => setSelectedTaskId(null)}
-              className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-md"
+              className="p-1.5 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 rounded-md cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -150,7 +150,7 @@ export const TaskDetailModal: React.FC = () => {
               rows={2}
               value={task.title}
               onChange={(e) => updateTask(task.id, { title: e.target.value })}
-              placeholder="Task Title..."
+              placeholder="Tiêu đề nhiệm vụ..."
               className="w-full text-xl font-bold text-stone-900 dark:text-stone-100 bg-transparent border-none focus:outline-hidden resize-none placeholder:text-stone-400"
             />
           </div>
@@ -161,18 +161,18 @@ export const TaskDetailModal: React.FC = () => {
             <div className="grid grid-cols-3 items-center">
               <span className="text-stone-500 flex items-center space-x-1.5">
                 <CheckSquare className="w-3.5 h-3.5" />
-                <span>Status</span>
+                <span>Trạng thái</span>
               </span>
               <select
                 value={task.status}
                 onChange={(e) => updateTask(task.id, { status: e.target.value as TaskStatus })}
-                className="col-span-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2.5 py-1 font-medium text-stone-800 dark:text-stone-200"
+                className="col-span-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2.5 py-1 font-medium text-stone-800 dark:text-stone-200 cursor-pointer"
               >
-                <option value="backlog">📥 Backlog</option>
-                <option value="todo">🎯 To Do</option>
-                <option value="in_progress">⚡ In Progress</option>
-                <option value="in_review">🔍 In Review</option>
-                <option value="done">✅ Done</option>
+                <option value="backlog">📥 Chưa phân loại (Backlog)</option>
+                <option value="todo">🎯 Cần làm (To Do)</option>
+                <option value="in_progress">⚡ Đang làm (In Progress)</option>
+                <option value="in_review">🔍 Đang kiểm tra (In Review)</option>
+                <option value="done">✅ Đã xong (Done)</option>
               </select>
             </div>
 
@@ -180,17 +180,17 @@ export const TaskDetailModal: React.FC = () => {
             <div className="grid grid-cols-3 items-center">
               <span className="text-stone-500 flex items-center space-x-1.5">
                 <AlertCircle className="w-3.5 h-3.5" />
-                <span>Priority</span>
+                <span>Mức độ ưu tiên</span>
               </span>
               <select
                 value={task.priority}
                 onChange={(e) => updateTask(task.id, { priority: e.target.value as TaskPriority })}
-                className="col-span-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2.5 py-1 font-medium text-stone-800 dark:text-stone-200"
+                className="col-span-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2.5 py-1 font-medium text-stone-800 dark:text-stone-200 cursor-pointer"
               >
-                <option value="urgent">🔴 Urgent</option>
-                <option value="high">🟠 High</option>
-                <option value="medium">🟡 Medium</option>
-                <option value="low">🟢 Low</option>
+                <option value="urgent">🔴 Khẩn cấp</option>
+                <option value="high">🟠 Cao</option>
+                <option value="medium">🟡 Trung bình</option>
+                <option value="low">🟢 Thấp</option>
               </select>
             </div>
 
@@ -198,14 +198,14 @@ export const TaskDetailModal: React.FC = () => {
             <div className="grid grid-cols-3 items-center">
               <span className="text-stone-500 flex items-center space-x-1.5">
                 <Folder className="w-3.5 h-3.5" />
-                <span>Project</span>
+                <span>Thuộc dự án</span>
               </span>
               <select
                 value={task.projectId || ''}
                 onChange={(e) => updateTask(task.id, { projectId: e.target.value || undefined })}
-                className="col-span-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2.5 py-1 text-stone-800 dark:text-stone-200"
+                className="col-span-2 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-md px-2.5 py-1 text-stone-800 dark:text-stone-200 cursor-pointer"
               >
-                <option value="">(No Project)</option>
+                <option value="">(Không thuộc dự án)</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.icon} {p.name}
@@ -218,7 +218,7 @@ export const TaskDetailModal: React.FC = () => {
             <div className="grid grid-cols-3 items-center">
               <span className="text-stone-500 flex items-center space-x-1.5">
                 <Calendar className="w-3.5 h-3.5" />
-                <span>Due Date</span>
+                <span>Hạn chót</span>
               </span>
               <input
                 type="date"
@@ -232,7 +232,7 @@ export const TaskDetailModal: React.FC = () => {
             <div className="grid grid-cols-3 items-center">
               <span className="text-stone-500 flex items-center space-x-1.5">
                 <Clock className="w-3.5 h-3.5" />
-                <span>Estimate (min)</span>
+                <span>Thời gian (phút)</span>
               </span>
               <input
                 type="number"
@@ -249,7 +249,7 @@ export const TaskDetailModal: React.FC = () => {
           <div>
             <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
               <Tag className="w-3.5 h-3.5" />
-              <span>Tags</span>
+              <span>Nhãn & Thẻ phân loại</span>
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               {task.tags?.map((tag) => (
@@ -258,14 +258,14 @@ export const TaskDetailModal: React.FC = () => {
                   className="px-2 py-1 bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 rounded-md text-xs flex items-center space-x-1 border border-stone-200 dark:border-stone-700"
                 >
                   <span>{tag}</span>
-                  <button onClick={() => handleRemoveTag(tag)} className="text-stone-400 hover:text-stone-600">
+                  <button onClick={() => handleRemoveTag(tag)} className="text-stone-400 hover:text-stone-600 cursor-pointer">
                     ×
                   </button>
                 </span>
               ))}
               <input
                 type="text"
-                placeholder="+ Add tag (Press Enter)"
+                placeholder="+ Thêm nhãn (nhấn Enter)"
                 value={newTagInput}
                 onChange={(e) => setNewTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
@@ -279,7 +279,7 @@ export const TaskDetailModal: React.FC = () => {
             <div className="flex items-center justify-between mb-2">
               <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider flex items-center space-x-1.5">
                 <CheckSquare className="w-3.5 h-3.5" />
-                <span>Subtasks & Milestones</span>
+                <span>Nhiệm vụ con & Mục tiêu</span>
               </div>
               <span className="text-xs text-stone-400">
                 {task.subtasks?.filter((st) => st.completed).length || 0} / {task.subtasks?.length || 0}
@@ -306,7 +306,7 @@ export const TaskDetailModal: React.FC = () => {
                   </div>
                   <button
                     onClick={() => handleDeleteSubtask(st.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-stone-400 hover:text-rose-500"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-stone-400 hover:text-rose-500 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -318,16 +318,16 @@ export const TaskDetailModal: React.FC = () => {
             <form onSubmit={handleAddSubtask} className="flex items-center space-x-2">
               <input
                 type="text"
-                placeholder="Add subtask item..."
+                placeholder="Thêm nhiệm vụ con..."
                 value={newSubtaskTitle}
                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
                 className="flex-1 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-md px-3 py-1.5 text-xs text-stone-900 dark:text-stone-100 focus:outline-hidden"
               />
               <button
                 type="submit"
-                className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-700 dark:text-stone-300 text-xs px-3 py-1.5 rounded-md font-medium"
+                className="bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-700 dark:text-stone-300 text-xs px-3 py-1.5 rounded-md font-bold cursor-pointer"
               >
-                Add
+                Thêm
               </button>
             </form>
           </div>
@@ -336,13 +336,13 @@ export const TaskDetailModal: React.FC = () => {
           <div>
             <div className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-2 flex items-center space-x-1.5">
               <FileText className="w-3.5 h-3.5" />
-              <span>Notes & Detailed Description</span>
+              <span>Ghi chú & Mô tả chi tiết</span>
             </div>
             <textarea
               rows={6}
               value={task.description || ''}
               onChange={(e) => updateTask(task.id, { description: e.target.value })}
-              placeholder="Write detailed requirements, acceptance criteria, or scratch notes..."
+              placeholder="Viết yêu cầu chi tiết, tiêu chí hoàn thành hoặc ghi chú nhanh..."
               className="w-full bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 rounded-lg p-3 text-xs text-stone-800 dark:text-stone-200 placeholder:text-stone-400 focus:outline-hidden resize-y"
             />
           </div>

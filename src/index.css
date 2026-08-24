@@ -1,13 +1,62 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root {
-    --theme-name: 'default';
-    --theme-primary: #4f46e5;
-    --theme-primary-hover: #4338ca;
-    --theme-primary-light: #e0e7ff;
+    --theme-name: 'kawaii';
+    --theme-primary: #FF8FAB;
+    --theme-primary-hover: #FF6B8A;
+    --theme-primary-light: #FFF0F3;
     --theme-primary-text: #ffffff;
-    --theme-accent: #6366f1;
+    --theme-accent: #A78BFA;
+
+    --bg-main: #FFF8F0;
+    --bg-sidebar: #FFF5EE;
+    --bg-header: #ffffff;
+    --bg-card: #ffffff;
+    --bg-inner-box: #FFF0E8;
+    --border-card: #FFE0D0;
+    --border-inner: #FFD4C0;
+    --text-main: #4A3728;
+    --text-muted: #7A6455;
+    --text-dim: #A89585;
+
+    /* Kawaii pastel palette */
+    --kawaii-pink: #FFB5C2;
+    --kawaii-cream: #FFF5E4;
+    --kawaii-mint: #B8E8D0;
+    --kawaii-lavender: #E8D5F5;
+    --kawaii-sky: #BDE0FE;
+    --kawaii-peach: #FFD6A5;
+    --kawaii-coral: #FF8FAB;
+    --kawaii-rose: #FECDD3;
+    --kawaii-yellow: #FDE68A;
+    --kawaii-teal: #99F6E4;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  [data-theme="kawaii"] {
+    --theme-name: 'kawaii';
+    --theme-primary: #FF8FAB;
+    --theme-primary-hover: #FF6B8A;
+    --theme-primary-light: #FFF0F3;
+    --theme-primary-text: #ffffff;
+    --theme-accent: #A78BFA;
+
+    --bg-main: #FFF8F0;
+    --bg-sidebar: #FFF5EE;
+    --bg-header: #ffffff;
+    --bg-card: #ffffff;
+    --bg-inner-box: #FFF0E8;
+    --border-card: #FFE0D0;
+    --border-inner: #FFD4C0;
+    --text-main: #4A3728;
+    --text-muted: #7A6455;
+    --text-dim: #A89585;
   }
 
   [data-theme="forest"] {
@@ -17,6 +66,17 @@
     --theme-primary-light: #d1fae5;
     --theme-primary-text: #ffffff;
     --theme-accent: #10b981;
+
+    --bg-main: #051c14;
+    --bg-sidebar: #02130d;
+    --bg-header: #041811;
+    --bg-card: #0a2e22;
+    --bg-inner-box: #041f16;
+    --border-card: #134e3a;
+    --border-inner: #1a634b;
+    --text-main: #ecfdf5;
+    --text-muted: #a7f3d0;
+    --text-dim: #6ee7b7;
   }
 
   [data-theme="midnight"] {
@@ -26,6 +86,17 @@
     --theme-primary-light: #e0f2fe;
     --theme-primary-text: #ffffff;
     --theme-accent: #38bdf8;
+
+    --bg-main: #070b14;
+    --bg-sidebar: #050810;
+    --bg-header: #060912;
+    --bg-card: #0d1527;
+    --bg-inner-box: #080f1d;
+    --border-card: #1e293b;
+    --border-inner: #334155;
+    --text-main: #f0f9ff;
+    --text-muted: #bae6fd;
+    --text-dim: #7dd3fc;
   }
 
   [data-theme="sunset"] {
@@ -35,6 +106,17 @@
     --theme-primary-light: #ffedd5;
     --theme-primary-text: #ffffff;
     --theme-accent: #f97316;
+
+    --bg-main: #1a0c0f;
+    --bg-sidebar: #120709;
+    --bg-header: #160a0d;
+    --bg-card: #291319;
+    --bg-inner-box: #1c0c11;
+    --border-card: #4c1d24;
+    --border-inner: #662731;
+    --text-main: #fff1f2;
+    --text-muted: #fecdd3;
+    --text-dim: #fda4af;
   }
 
   [data-theme="nord"] {
@@ -44,6 +126,17 @@
     --theme-primary-light: #f1f5f9;
     --theme-primary-text: #ffffff;
     --theme-accent: #0ea5e9;
+
+    --bg-main: #242933;
+    --bg-sidebar: #1d212a;
+    --bg-header: #21252f;
+    --bg-card: #2e3440;
+    --bg-inner-box: #21252e;
+    --border-card: #3b4252;
+    --border-inner: #434c5e;
+    --text-main: #eceff4;
+    --text-muted: #d8dee9;
+    --text-dim: #e5e9f0;
   }
 
   [data-theme="lavender"] {
@@ -53,7 +146,212 @@
     --theme-primary-light: #ede9fe;
     --theme-primary-text: #ffffff;
     --theme-accent: #a855f7;
+
+    --bg-main: #150a21;
+    --bg-sidebar: #0e0617;
+    --bg-header: #12081c;
+    --bg-card: #231238;
+    --bg-inner-box: #170b24;
+    --border-card: #3c1e5f;
+    --border-inner: #4f287e;
+    --text-main: #faf5ff;
+    --text-muted: #e9d5ff;
+    --text-dim: #d8b4fe;
   }
+
+  [data-theme="starbucks"] {
+    --theme-name: 'starbucks';
+    --theme-primary: #00754A;
+    --theme-primary-hover: #006241;
+    --theme-primary-light: #d4e9e2;
+    --theme-primary-text: #ffffff;
+    --theme-accent: #cba258;
+    --theme-house: #1E3932;
+    --theme-canvas: #f2f0eb;
+    --theme-ceramic: #edebe9;
+
+    --bg-main: #f2f0eb;
+    --bg-sidebar: #edebe9;
+    --bg-header: #ffffff;
+    --bg-card: #ffffff;
+    --bg-inner-box: #edebe9;
+    --border-card: #d6dbde;
+    --border-inner: #c5cacd;
+    --text-main: #1E3932;
+    --text-muted: #2d544a;
+    --text-dim: #487a6c;
+  }
+}
+
+/* ========================================
+   GLOBAL FONT — Nunito for kawaii theme
+   ======================================== */
+body, html {
+  font-family: 'Nunito', system-ui, -apple-system, sans-serif;
+}
+
+/* Global Theme Bindings */
+main {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main);
+}
+
+aside {
+  background-color: var(--bg-sidebar) !important;
+  border-color: var(--border-card) !important;
+  color: var(--text-main);
+}
+
+header {
+  background-color: var(--bg-header) !important;
+  border-color: var(--border-card) !important;
+  color: var(--text-main);
+}
+
+/* Reusable Theme Card & Surface Classes */
+.theme-card {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-card) !important;
+  color: var(--text-main) !important;
+}
+
+.theme-inner-box {
+  background-color: var(--bg-inner-box) !important;
+  border-color: var(--border-inner) !important;
+  color: var(--text-main) !important;
+}
+
+.theme-text-main {
+  color: var(--text-main) !important;
+}
+
+.theme-text-muted {
+  color: var(--text-muted) !important;
+}
+
+.theme-text-dim {
+  color: var(--text-dim) !important;
+}
+
+/* ========================================
+   KAWAII PASTEL DESIGN SYSTEM
+   ======================================== */
+
+/* Kawaii Card — soft shadow, big radius, warm white */
+.kawaii-card {
+  background: #ffffff;
+  border-radius: 20px;
+  border: 1.5px solid rgba(255, 181, 194, 0.25);
+  box-shadow: 0 2px 12px rgba(255, 143, 171, 0.08), 0 1px 3px rgba(0,0,0,0.04);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.kawaii-card:hover {
+  box-shadow: 0 4px 20px rgba(255, 143, 171, 0.14), 0 2px 6px rgba(0,0,0,0.06);
+}
+
+/* Kawaii Pill Button */
+.kawaii-btn {
+  border-radius: 50px;
+  font-weight: 800;
+  font-family: 'Nunito', sans-serif;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer;
+}
+
+.kawaii-btn:active {
+  transform: scale(0.94);
+}
+
+/* Category color bubbles — circular icon containers */
+.kawaii-bubble {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.kawaii-bubble:hover {
+  transform: scale(1.08);
+}
+
+.kawaii-bubble-pink { background: linear-gradient(135deg, #FFB5C2, #FF8FAB); color: white; }
+.kawaii-bubble-mint { background: linear-gradient(135deg, #B8E8D0, #6EE7B7); color: white; }
+.kawaii-bubble-lavender { background: linear-gradient(135deg, #E8D5F5, #C4B5FD); color: white; }
+.kawaii-bubble-sky { background: linear-gradient(135deg, #BDE0FE, #93C5FD); color: white; }
+.kawaii-bubble-peach { background: linear-gradient(135deg, #FFD6A5, #FDBA74); color: white; }
+.kawaii-bubble-coral { background: linear-gradient(135deg, #FECDD3, #FDA4AF); color: white; }
+.kawaii-bubble-yellow { background: linear-gradient(135deg, #FDE68A, #FCD34D); color: #92400E; }
+.kawaii-bubble-teal { background: linear-gradient(135deg, #99F6E4, #5EEAD4); color: white; }
+
+/* Kawaii Progress — rainbow gradient */
+.kawaii-progress {
+  height: 10px;
+  border-radius: 50px;
+  background: linear-gradient(90deg, #FFB5C2, #BDE0FE, #B8E8D0, #E8D5F5);
+  background-size: 300% 100%;
+  animation: kawaii-shimmer 3s ease infinite;
+}
+
+@keyframes kawaii-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Bounce-in animation for cards */
+@keyframes kawaii-bounce-in {
+  0% { opacity: 0; transform: scale(0.9) translateY(12px); }
+  60% { opacity: 1; transform: scale(1.03) translateY(-2px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.kawaii-bounce-in {
+  animation: kawaii-bounce-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Gentle float for FAB */
+@keyframes kawaii-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-4px); }
+}
+
+.kawaii-float {
+  animation: kawaii-float 3s ease-in-out infinite;
+}
+
+/* Starbucks Retail Atmosphere & Geometry */
+[data-theme="starbucks"] {
+  letter-spacing: -0.01em;
+}
+
+.sb-pill-btn {
+  border-radius: 50px !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: -0.01em;
+}
+
+.sb-pill-btn:active {
+  transform: scale(0.95);
+}
+
+.sb-card {
+  border-radius: 12px;
+  background-color: var(--bg-card);
+  box-shadow: 0 0 0.5px rgba(0, 0, 0, 0.14), 0 1px 1px rgba(0, 0, 0, 0.24);
+}
+
+.sb-frap-shadow {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.24), 0 8px 12px rgba(0, 0, 0, 0.14);
+}
+
+.sb-frap-shadow:active {
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.24);
+  transform: scale(0.95);
 }
 
 /* Custom scrollbar styling */
@@ -65,17 +363,17 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(150, 150, 150, 0.25);
+  background: rgba(255, 143, 171, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(150, 150, 150, 0.45);
+  background: rgba(255, 143, 171, 0.45);
 }
 
 @layer utilities {
   .hide-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
   .hide-scrollbar::-webkit-scrollbar {
     display: none;

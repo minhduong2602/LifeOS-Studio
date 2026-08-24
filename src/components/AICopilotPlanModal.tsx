@@ -20,7 +20,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Sliders
+  Sliders,
+  Bot
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AIPerformancePlan, TimeBlock, TaskPriority } from '../types';
@@ -37,6 +38,9 @@ export const AICopilotPlanModal: React.FC = () => {
     energyProfile,
     updateEnergyProfile,
     triggerCelebration,
+    aiConfig,
+    getActiveAIConfig,
+    setIsAISettingsModalOpen,
   } = useApp();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -101,27 +105,54 @@ export const AICopilotPlanModal: React.FC = () => {
           currentDate,
           energyProfile,
           recalibrationPrompt: customPrompt || recalibrationPrompt || undefined,
+          aiConfig: getActiveAIConfig(),
         }),
       });
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.details || errData.error || `Server responded with ${response.status}`);
+        throw new Error(errData.details || errData.error || `Server responded with status ${response.status}`);
       }
 
-      const data: AIPerformancePlan = await response.json();
-      setPlanResult(data);
+      const rawData = await response.json();
+      const rawBlocks = rawData?.timeBlocks || rawData?.time_blocks || rawData?.schedule || [];
+      const blocksList = Array.isArray(rawBlocks) ? rawBlocks : [];
+
+      const normalizedData: AIPerformancePlan = {
+        strategySummary: rawData?.strategySummary || rawData?.strategy_summary || 'Executive daily plan prepared.',
+        totalDeepWorkMinutes: Number(rawData?.totalDeepWorkMinutes || rawData?.total_deep_work_minutes || 0),
+        burnoutRiskScore: (rawData?.burnoutRiskScore || rawData?.burnout_risk_score || 'low') as 'low' | 'moderate' | 'high',
+        coachAdvice: rawData?.coachAdvice || rawData?.coach_advice || 'Focus on high-priority deep work first.',
+        timeBlocks: blocksList.map((b: any) => ({
+          timeSlot: b.timeSlot || b.time_slot || b.slot || '09:00 - 10:00',
+          title: b.title || 'Scheduled Focus Block',
+          category: b.category || 'deep_work',
+          taskId: b.taskId || b.task_id,
+          habitId: b.habitId || b.habit_id,
+          lectureId: b.lectureId || b.lecture_id,
+          rationale: b.rationale || 'Optimal schedule placement based on daily goals.',
+          completed: false,
+          isAutoPlanned: true,
+        })),
+        unplacedTasks: Array.isArray(rawData?.unplacedTasks) 
+          ? rawData.unplacedTasks 
+          : Array.isArray(rawData?.unplaced_tasks) 
+          ? rawData.unplaced_tasks 
+          : [],
+      };
+
+      setPlanResult(normalizedData);
 
       // Select all generated blocks by default
       const initialSelection: Record<number, boolean> = {};
-      data.timeBlocks.forEach((_, idx) => {
+      normalizedData.timeBlocks.forEach((_, idx) => {
         initialSelection[idx] = true;
       });
       setSelectedBlocks(initialSelection);
       if (customPrompt) setRecalibrationPrompt('');
     } catch (err: any) {
       console.error('Plan generation failed:', err);
-      setError(err.message || 'Failed to generate schedule. Please verify your GEMINI_API_KEY.');
+      setError(err.message || 'Failed to generate schedule. Please configure your AI API key in Settings.');
     } finally {
       setIsLoading(false);
     }
@@ -222,13 +253,13 @@ export const AICopilotPlanModal: React.FC = () => {
             </div>
             <div>
               <h2 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
-                Executive AI Copilot
+                Trợ lý AI Lập Lịch Trình
                 <span className="text-[10px] font-medium tracking-wide uppercase px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                  Adaptive Scheduler
+                  Circadian AI
                 </span>
               </h2>
               <p className="text-xs text-stone-400">
-                Optimized by circadian focus peaks & priority weighting
+                Tối ưu hóa theo năng lượng sinh học & độ ưu tiên công việc
               </p>
             </div>
           </div>
@@ -241,10 +272,10 @@ export const AICopilotPlanModal: React.FC = () => {
                   ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-300' 
                   : 'bg-stone-800/60 border-stone-700 hover:bg-stone-700/60 text-stone-300'
               }`}
-              title="Energy & Work Hours Profile"
+              title="Cấu hình khung giờ & năng lượng"
             >
               <Sliders className="w-4 h-4" />
-              <span className="hidden sm:inline">Profile</span>
+              <span className="hidden sm:inline">Khung giờ</span>
             </button>
             <button
               onClick={() => setIsPlanModalOpen(false)}
@@ -266,18 +297,18 @@ export const AICopilotPlanModal: React.FC = () => {
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-semibold text-stone-300 flex items-center gap-1.5">
-                  <Brain className="w-3.5 h-3.5 text-indigo-400" /> Circadian Energy & Schedule Profile
+                  <Brain className="w-3.5 h-3.5 text-indigo-400" /> Cấu hình Nhịp Sinh Học & Giờ Làm Việc
                 </span>
                 <button
                   onClick={handleSaveSettings}
-                  className="px-3 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-all"
+                  className="px-3 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-all cursor-pointer"
                 >
-                  Save & Recalibrate
+                  Lưu & Lập Lại Lịch
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div>
-                  <label className="block text-stone-400 mb-1">Work Start</label>
+                  <label className="block text-stone-400 mb-1">Bắt đầu làm việc</label>
                   <input
                     type="time"
                     value={workStart}
@@ -286,7 +317,7 @@ export const AICopilotPlanModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-stone-400 mb-1">Work End</label>
+                  <label className="block text-stone-400 mb-1">Kết thúc làm việc</label>
                   <input
                     type="time"
                     value={workEnd}
@@ -295,7 +326,7 @@ export const AICopilotPlanModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-stone-400 mb-1">Lunch Hour</label>
+                  <label className="block text-stone-400 mb-1">Giờ ăn trưa</label>
                   <input
                     type="time"
                     value={lunchStart}
@@ -304,15 +335,15 @@ export const AICopilotPlanModal: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-stone-400 mb-1">Peak Focus Window</label>
+                  <label className="block text-stone-400 mb-1">Khoảng tập trung cao nhất</label>
                   <select
                     value={peakFocusPeriod}
                     onChange={(e: any) => setPeakFocusPeriod(e.target.value)}
                     className="w-full bg-stone-900 border border-stone-700 rounded px-2.5 py-1.5 text-stone-200 focus:outline-none focus:border-indigo-500"
                   >
-                    <option value="morning">Morning (08:30 - 12:00)</option>
-                    <option value="afternoon">Afternoon (13:00 - 16:30)</option>
-                    <option value="evening">Evening (17:00 - 21:00)</option>
+                    <option value="morning">Buổi sáng (08:30 - 12:00)</option>
+                    <option value="afternoon">Buổi chiều (13:00 - 16:30)</option>
+                    <option value="evening">Buổi tối (17:00 - 21:00)</option>
                   </select>
                 </div>
               </div>
@@ -330,25 +361,37 @@ export const AICopilotPlanModal: React.FC = () => {
               </div>
               <div>
                 <p className="text-sm font-semibold text-stone-200">
-                  Synthesizing optimal daily timeline...
+                  Đang tổng hợp lịch trình ngày tối ưu nhất...
                 </p>
                 <p className="text-xs text-stone-500 mt-1 max-w-sm">
-                  Analyzing task urgencies, matching high-load work to {energyProfile.peakFocusPeriod} peak focus, and budgeting rest breaks.
+                  Phân tích mức độ khẩn cấp, khớp công việc nặng vào đỉnh cao tập trung và đan xen thời gian nghỉ ngơi.
                 </p>
               </div>
             </div>
           ) : error ? (
             <div className="p-6 rounded-xl bg-rose-950/30 border border-rose-800/50 text-rose-200 space-y-3">
               <div className="flex items-center gap-2 text-sm font-semibold text-rose-300">
-                <AlertTriangle className="w-4 h-4" /> AI Planning Error
+                <AlertTriangle className="w-4 h-4" /> Thông báo Dịch vụ AI
               </div>
               <p className="text-xs text-rose-300/90">{error}</p>
-              <button
-                onClick={() => fetchAIPlan()}
-                className="px-4 py-1.5 rounded-lg bg-rose-800/50 hover:bg-rose-700/60 text-xs font-medium transition-all"
-              >
-                Try Again
-              </button>
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={() => fetchAIPlan()}
+                  className="px-4 py-1.5 rounded-lg bg-rose-800/50 hover:bg-rose-700/60 text-xs font-medium transition-all cursor-pointer"
+                >
+                  Thử lại
+                </button>
+                <button
+                  onClick={() => {
+                    setIsPlanModalOpen(false);
+                    setIsAISettingsModalOpen(true);
+                  }}
+                  className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  <span>Cài đặt Khóa API Nhà cung cấp AI</span>
+                </button>
+              </div>
             </div>
           ) : planResult ? (
             <>
@@ -361,7 +404,7 @@ export const AICopilotPlanModal: React.FC = () => {
                   <div className="relative z-10 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                        Executive Strategy
+                        Chiến lược trong ngày
                       </span>
                       {getRiskBadge(planResult.burnoutRiskScore)}
                     </div>
@@ -370,7 +413,7 @@ export const AICopilotPlanModal: React.FC = () => {
                     </p>
                     <p className="text-[11px] text-stone-400 pt-1 flex items-center gap-1.5">
                       <Zap className="w-3 h-3 text-amber-400 flex-shrink-0" />
-                      <span><strong className="text-stone-300">Coach Insight:</strong> {planResult.coachAdvice}</span>
+                      <span><strong className="text-stone-300">Lời khuyên:</strong> {planResult.coachAdvice}</span>
                     </p>
                   </div>
                 </div>
@@ -378,15 +421,15 @@ export const AICopilotPlanModal: React.FC = () => {
                 <div className="p-4 rounded-xl bg-stone-850/80 border border-stone-800/90 flex flex-col justify-between">
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-stone-400">
-                      Planned Deep Work
+                      Thời lượng Tập trung Sâu
                     </span>
                     <div className="text-2xl font-black text-white mt-1">
-                      {Math.floor(planResult.totalDeepWorkMinutes / 60)}h {planResult.totalDeepWorkMinutes % 60}m
+                      {Math.floor(planResult.totalDeepWorkMinutes / 60)} giờ {planResult.totalDeepWorkMinutes % 60} phút
                     </div>
                   </div>
                   <div className="text-[11px] text-stone-400 mt-2 flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>{planResult.timeBlocks.length} scheduled time slots</span>
+                    <span>{planResult.timeBlocks.length} khung giờ đã lên lịch</span>
                   </div>
                 </div>
               </div>
@@ -406,34 +449,34 @@ export const AICopilotPlanModal: React.FC = () => {
                       type="text"
                       value={recalibrationPrompt}
                       onChange={(e) => setRecalibrationPrompt(e.target.value)}
-                      placeholder="Prompt Copilot to adjust (e.g. 'Push workout to 18:00', 'Make afternoon lighter', 'Add 30m sprint')..."
+                      placeholder="Yêu cầu AI điều chỉnh (VD: 'Đẩy giờ tập thể dục sang 18:00', 'Buổi chiều nhẹ nhàng hơn')..."
                       className="w-full bg-stone-900/90 border border-stone-700/80 rounded-xl pl-9 pr-4 py-2 text-xs text-stone-200 placeholder-stone-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={!recalibrationPrompt.trim() || isLoading}
-                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-medium flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/20"
+                    className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
                   >
                     <Send className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Recalibrate</span>
+                    <span className="hidden sm:inline">Điều chỉnh</span>
                   </button>
                 </form>
 
                 {/* Preset quick adjustment pills */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] uppercase font-semibold text-stone-500 mr-1">Quick Tuning:</span>
+                  <span className="text-[10px] uppercase font-semibold text-stone-500 mr-1">Tinh chỉnh nhanh:</span>
                   {[
-                    'Lighten afternoon load',
-                    'Push gym to 18:00',
-                    'Add 15m focus breathing',
-                    'Prioritize urgent tasks first',
+                    'Giảm tải buổi chiều',
+                    'Đẩy giờ tập thể thao sang 18:00',
+                    'Thêm 15p nghỉ ngơi thư giãn',
+                    'Ưu tiên nhiệm vụ khẩn cấp trước',
                   ].map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => fetchAIPlan(preset)}
-                      className="text-[11px] px-2.5 py-1 rounded-full bg-stone-850 hover:bg-stone-800 text-stone-300 border border-stone-700/50 transition-colors"
+                      className="text-[11px] px-2.5 py-1 rounded-full bg-stone-850 hover:bg-stone-800 text-stone-300 border border-stone-700/50 transition-colors cursor-pointer"
                     >
                       {preset}
                     </button>
@@ -444,8 +487,8 @@ export const AICopilotPlanModal: React.FC = () => {
               {/* Proposed Timeline Blocks */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-stone-400 font-semibold px-1">
-                  <span>PROPOSED DAY TIMELINE ({planResult.timeBlocks.length} BLOCKS)</span>
-                  <span>SELECT TO APPLY</span>
+                  <span>LỊCH TRÌNH ĐỀ XUẤT ({planResult.timeBlocks.length} KHUNG GIỜ)</span>
+                  <span>TÍCH CHỌN ĐỂ ÁP DỤNG</span>
                 </div>
 
                 <div className="space-y-2">
@@ -512,7 +555,7 @@ export const AICopilotPlanModal: React.FC = () => {
               {planResult.unplacedTasks && planResult.unplacedTasks.length > 0 && (
                 <div className="p-3.5 rounded-xl bg-amber-950/20 border border-amber-800/40 text-xs space-y-1.5">
                   <div className="flex items-center gap-1.5 font-semibold text-amber-400">
-                    <Coffee className="w-3.5 h-3.5" /> Paced Tasks (Deferred to Protect Focus):
+                    <Coffee className="w-3.5 h-3.5" /> Nhiệm vụ hoãn lại để đảm bảo sự tập trung:
                   </div>
                   <ul className="list-disc list-inside space-y-1 text-stone-300 text-[11px]">
                     {planResult.unplacedTasks.map((t, i) => (
@@ -535,26 +578,26 @@ export const AICopilotPlanModal: React.FC = () => {
                 type="checkbox"
                 checked={replaceExisting}
                 onChange={(e) => setReplaceExisting(e.target.checked)}
-                className="rounded bg-stone-800 border-stone-700 text-indigo-600 focus:ring-0"
+                className="rounded bg-stone-800 border-stone-700 text-indigo-600 focus:ring-0 cursor-pointer"
               />
-              Replace existing timeline blocks
+              <span>Thay thế toàn bộ lịch trình hiện có của ngày</span>
             </label>
           </div>
 
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsPlanModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-medium text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-stone-400 hover:text-stone-200 hover:bg-stone-800 transition-colors cursor-pointer"
             >
-              Cancel
+              Hủy
             </button>
             <button
               onClick={handleApply}
               disabled={!planResult || isLoading}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             >
               <Zap className="w-4 h-4 fill-current" />
-              Apply to Daily Agenda
+              <span>Áp dụng vào Lịch trình Hôm nay</span>
             </button>
           </div>
         </div>

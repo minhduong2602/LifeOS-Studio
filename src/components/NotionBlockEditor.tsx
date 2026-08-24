@@ -37,7 +37,10 @@ export const NotionBlockEditor: React.FC = () => {
   const {
     selectedPageId,
     pages,
+    addPage,
     updatePage,
+    deletePage,
+    duplicatePage,
     getPageBlocks,
     addBlock,
     updateBlock,
@@ -63,8 +66,21 @@ export const NotionBlockEditor: React.FC = () => {
 
   if (!activePage) {
     return (
-      <div className="h-full flex items-center justify-center text-stone-400 text-sm">
-        Select or create a page from the sidebar to start writing.
+      <div className="h-full flex flex-col items-center justify-center theme-text-muted text-sm space-y-3">
+        <p>Select or create a page from the sidebar to start writing.</p>
+        <button
+          onClick={() => {
+            addPage({
+              title: 'Untitled Page',
+              icon: '📄',
+              parentId: null,
+            });
+            triggerCelebration();
+          }}
+          className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md cursor-pointer transition-all"
+        >
+          + Create New Page
+        </button>
       </div>
     );
   }
@@ -141,22 +157,28 @@ export const NotionBlockEditor: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-y-auto bg-white dark:bg-stone-900">
+    <div className="h-full flex flex-col overflow-y-auto">
       {/* Cover Image Banner */}
       {activePage.coverImage && (
-        <div className="relative h-48 w-full group overflow-hidden bg-stone-100 dark:bg-stone-800">
+        <div className="relative h-48 w-full group overflow-hidden bg-black/20">
           <img
             src={activePage.coverImage}
             alt="Page cover"
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-4">
+          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-4 space-x-2">
             <button
               onClick={() => setShowCoverPicker(true)}
-              className="bg-white/90 dark:bg-stone-800/90 text-xs px-2.5 py-1 rounded-md text-stone-800 dark:text-stone-200 hover:bg-white transition-all shadow-xs"
+              className="theme-inner-box border text-xs px-2.5 py-1 rounded-md theme-text-main hover:brightness-110 transition-all shadow-xs cursor-pointer"
             >
               Change Cover
+            </button>
+            <button
+              onClick={() => updatePage(activePage.id, { coverImage: undefined })}
+              className="bg-rose-600/80 hover:bg-rose-600 text-white text-xs px-2.5 py-1 rounded-md transition-all shadow-xs cursor-pointer"
+            >
+              Remove Cover
             </button>
           </div>
         </div>
@@ -164,12 +186,12 @@ export const NotionBlockEditor: React.FC = () => {
 
       {/* Main Page Body Container */}
       <div className="max-w-4xl w-full mx-auto px-6 py-8 flex-1">
-        {/* Page Top Controls (Add Icon / Cover / Favorite) */}
-        <div className="flex items-center justify-between mb-4 text-xs text-stone-400">
+        {/* Page Top Controls (Add Icon / Cover / Duplicate / Favorite / Delete) */}
+        <div className="flex items-center justify-between mb-4 text-xs theme-text-muted pb-3 border-b border-white/10">
           <div className="flex items-center space-x-3">
             <button
               onClick={() => setShowIconPicker(!showIconPicker)}
-              className="hover:text-stone-700 dark:hover:text-stone-200 flex items-center space-x-1"
+              className="hover:theme-text-main flex items-center space-x-1 cursor-pointer transition-colors"
             >
               <Smile className="w-3.5 h-3.5" />
               <span>{activePage.icon ? 'Change icon' : 'Add icon'}</span>
@@ -178,7 +200,7 @@ export const NotionBlockEditor: React.FC = () => {
             {!activePage.coverImage && (
               <button
                 onClick={() => setShowCoverPicker(true)}
-                className="hover:text-stone-700 dark:hover:text-stone-200 flex items-center space-x-1"
+                className="hover:theme-text-main flex items-center space-x-1 cursor-pointer transition-colors"
               >
                 <ImageIcon className="w-3.5 h-3.5" />
                 <span>Add cover</span>
@@ -187,13 +209,39 @@ export const NotionBlockEditor: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2">
-            <span className="text-[11px] text-stone-400">SQLite Offline Saved</span>
+            {/* Duplicate Button */}
+            <button
+              onClick={() => {
+                duplicatePage(activePage.id);
+                triggerCelebration();
+              }}
+              className="p-1.5 rounded-lg theme-inner-box border hover:brightness-110 theme-text-muted hover:theme-text-main transition-colors flex items-center space-x-1 cursor-pointer"
+              title="Duplicate this page"
+            >
+              <Copy className="w-3 h-3" />
+              <span className="text-[11px] hidden sm:inline">Duplicate</span>
+            </button>
+
+            {/* Favorite Pin Button */}
             <button
               onClick={() => updatePage(activePage.id, { isFavorite: !activePage.isFavorite })}
-              className="p-1 text-stone-400 hover:text-amber-500"
-              title="Favorite page"
+              className="p-1.5 rounded-lg theme-inner-box border hover:brightness-110 text-stone-400 hover:text-amber-400 cursor-pointer transition-colors"
+              title="Pin to Favorites"
             >
-              <Star className={`w-4 h-4 ${activePage.isFavorite ? 'text-amber-500 fill-amber-500' : ''}`} />
+              <Star className={`w-3.5 h-3.5 ${activePage.isFavorite ? 'text-amber-400 fill-amber-400' : ''}`} />
+            </button>
+
+            {/* Delete Page Button */}
+            <button
+              onClick={() => {
+                if (confirm(`Delete "${activePage.title}" and all its content?`)) {
+                  deletePage(activePage.id);
+                }
+              }}
+              className="p-1.5 rounded-lg theme-inner-box border hover:bg-rose-500/20 text-stone-400 hover:text-rose-400 cursor-pointer transition-colors"
+              title="Delete Page"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

@@ -30,6 +30,7 @@ export const QuickCaptureModal: React.FC = () => {
     projects,
     tasks,
     timeBlocks,
+    getActiveAIConfig,
   } = useApp();
 
   const [prompt, setPrompt] = useState('');
@@ -141,7 +142,7 @@ export const QuickCaptureModal: React.FC = () => {
       const response = await fetch('/api/parse-task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim(), history, schedule }),
+        body: JSON.stringify({ prompt: prompt.trim(), history, schedule, aiConfig: getActiveAIConfig() }),
       });
 
       if (!response.ok) {
@@ -254,7 +255,7 @@ export const QuickCaptureModal: React.FC = () => {
           <div className="flex items-center space-x-2">
             <Sparkles className="w-4 h-4 text-emerald-500" />
             <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">
-              Life OS AI Parser
+              Ghi Nhận Nhanh Bằng AI
             </h3>
           </div>
           <button
@@ -263,7 +264,7 @@ export const QuickCaptureModal: React.FC = () => {
               setMode('input');
               setParsedData(null);
             }}
-            className="p-1 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors"
+            className="p-1 rounded-lg text-stone-400 hover:text-stone-600 dark:hover:text-stone-300 transition-colors cursor-pointer"
             id="close-quick-capture-btn"
           >
             <X className="w-4 h-4" />
@@ -277,10 +278,10 @@ export const QuickCaptureModal: React.FC = () => {
               <textarea
                 autoFocus
                 rows={3}
-                placeholder="What's on your mind? (e.g. 'mai 8h đi gym 1 tiếng', 'add a new habit to drink water daily', 'read 20 pages tonight')"
+                placeholder="Bạn đang có ý định gì? (VD: 'mai 8h đi gym 1 tiếng', 'uống 2 lít nước mỗi ngày', 'đọc sách 30 phút tối nay')..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="w-full text-lg font-medium text-stone-900 dark:text-stone-100 bg-stone-50 dark:bg-stone-800/60 p-4 rounded-xl border border-stone-200 dark:border-stone-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 resize-none placeholder:text-stone-400 dark:placeholder:text-stone-500 transition-all"
+                className="w-full text-base font-medium text-stone-900 dark:text-stone-100 bg-stone-50 dark:bg-stone-800/60 p-4 rounded-xl border border-stone-200 dark:border-stone-700 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 resize-none placeholder:text-stone-400 dark:placeholder:text-stone-500 transition-all"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -315,8 +316,8 @@ export const QuickCaptureModal: React.FC = () => {
                     }
 
                     const timeStr = routine.time || '';
-                    const durStr = routine.duration ? `${routine.duration} min` : '';
-                    const detailStr = [isTomorrow ? 'Tomorrow' : 'Today', timeStr, durStr].filter(Boolean).join(' · ');
+                    const durStr = routine.duration ? `${routine.duration} phút` : '';
+                    const detailStr = [isTomorrow ? 'Ngày mai' : 'Hôm nay', timeStr, durStr].filter(Boolean).join(' · ');
 
                     return (
                       <button
@@ -335,13 +336,13 @@ export const QuickCaptureModal: React.FC = () => {
                           });
                           setMode('preview');
                         }}
-                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium transition-all text-left group"
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-900/10 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-medium transition-all text-left group cursor-pointer"
                       >
                         <Sparkles className="w-3 h-3 shrink-0 opacity-70 group-hover:opacity-100 transition-opacity" />
                         <div>
                           {prompt.trim() !== '' ? (
                             <>
-                              <span className="font-bold">Schedule like usual?</span>
+                              <span className="font-bold">Lên lịch theo thói quen?</span>
                               <span className="opacity-70 ml-1.5 font-normal tracking-tight">
                                 {detailStr ? `(${routine.title} · ${detailStr})` : `(${routine.title})`}
                               </span>
@@ -361,35 +362,35 @@ export const QuickCaptureModal: React.FC = () => {
 
               {error && (
                 <div className="text-red-500 text-xs px-2 mt-2">
-                  Error: {error}
+                  Lỗi: {error}
                 </div>
               )}
 
               <div className="pt-4 flex items-center justify-between">
                 <span className="text-[11px] text-stone-400 flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-emerald-500" />
-                  Natural language processing
+                  Xử lý ngôn ngữ tự nhiên
                 </span>
 
                 <div className="flex items-center space-x-2">
                   <button
                     type="button"
                     onClick={() => setIsQuickCaptureOpen(false)}
-                    className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-800 dark:hover:text-stone-300 font-medium"
+                    className="px-3 py-1.5 text-xs text-stone-500 hover:text-stone-800 dark:hover:text-stone-300 font-medium cursor-pointer"
                   >
-                    Cancel
+                    Hủy
                   </button>
                   <button
                     type="submit"
                     disabled={isProcessing || !prompt.trim()}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-xl shadow-md flex items-center space-x-1.5 disabled:opacity-50 transition-all"
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-md flex items-center space-x-1.5 disabled:opacity-50 transition-all cursor-pointer"
                   >
                     {isProcessing ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <Sparkles className="w-3.5 h-3.5" />
                     )}
-                    <span>{isProcessing ? 'Thinking...' : 'Analyze'}</span>
+                    <span>{isProcessing ? 'Đang phân tích...' : 'Phân Tích AI'}</span>
                   </button>
                 </div>
               </div>
@@ -406,10 +407,10 @@ export const QuickCaptureModal: React.FC = () => {
                 {parsedData?.inferredFromHistory && (
                   <div className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-md mb-1">
                     <Sparkles className="w-3 h-3" />
-                    <span>Schedule like usual</span>
+                    <span>Lên lịch theo thói quen</span>
                   </div>
                 )}
-                <h4 className="text-xl font-semibold text-stone-900 dark:text-stone-100 leading-tight">
+                <h4 className="text-xl font-bold text-stone-900 dark:text-stone-100 leading-tight">
                   {parsedData?.title}
                 </h4>
                 
@@ -418,7 +419,7 @@ export const QuickCaptureModal: React.FC = () => {
                   {(parsedData?.dueDate && parsedData?.dueTime) && <span>·</span>}
                   {parsedData?.dueTime && <span>{parsedData.dueTime}</span>}
                   {(parsedData?.dueTime && parsedData?.estimatedMinutes) && <span>·</span>}
-                  {parsedData?.estimatedMinutes && <span>{parsedData.estimatedMinutes} min</span>}
+                  {parsedData?.estimatedMinutes && <span>{parsedData.estimatedMinutes} phút</span>}
                 </div>
                 
                 {parsedData?.project && (
@@ -432,15 +433,15 @@ export const QuickCaptureModal: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setMode('input')}
-                  className="px-2 py-1.5 text-xs text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 font-medium transition-colors"
+                  className="px-2 py-1.5 text-xs text-stone-400 hover:text-stone-800 dark:hover:text-stone-200 font-medium transition-colors cursor-pointer"
                 >
-                  ← Edit Prompt
+                  ← Sửa câu lệnh
                 </button>
                 <button
                   onClick={handleSave}
-                  className="bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:bg-white text-white dark:text-stone-900 text-sm font-semibold px-6 py-2.5 rounded-xl shadow-md transition-all active:scale-95"
+                  className="bg-stone-900 dark:bg-stone-100 hover:bg-stone-800 dark:hover:white text-white dark:text-stone-900 text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition-all active:scale-95 cursor-pointer"
                 >
-                  Add
+                  Thêm Vào LifeOS
                 </button>
               </div>
             </div>

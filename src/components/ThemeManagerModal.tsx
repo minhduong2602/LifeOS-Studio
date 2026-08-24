@@ -10,7 +10,8 @@ import {
   Trees, 
   Sunset, 
   Compass, 
-  CheckCircle2
+  CheckCircle2,
+  Coffee
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { ThemePalette, ThemeOption } from '../types';
@@ -45,6 +46,8 @@ export const ThemeManagerModal: React.FC = () => {
         return <Compass className="w-4 h-4 text-cyan-400" />;
       case 'lavender':
         return <Sparkles className="w-4 h-4 text-purple-400" />;
+      case 'starbucks':
+        return <Coffee className="w-4 h-4 text-emerald-600" />;
       default:
         return <Sun className="w-4 h-4 text-indigo-500" />;
     }

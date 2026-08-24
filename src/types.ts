@@ -168,18 +168,35 @@ export interface CloudBackupSnapshot {
 
 export type ViewMode = 
   | 'today'
-  | 'glass_dashboard'
-  | 'kanban' 
-  | 'list' 
+  | 'tasks'
   | 'calendar' 
   | 'daily_agenda' 
   | 'page' 
-  | 'habit_tracker' 
-  | 'image_notes'
-  | 'lectures'
+  | 'projects'
   | 'sqlite_console' 
   | 'sync_center' 
-  | 'android_build';
+  | 'settings';
+
+export type AIProviderType = 'gemini' | 'openrouter' | 'openai' | 'custom';
+
+export interface ProviderSpecificConfig {
+  apiKey: string;
+  model: string;
+  baseUrl?: string;
+  temperature?: number;
+  customHeaders?: Record<string, string>;
+}
+
+export interface AIProviderConfig {
+  activeProvider: AIProviderType;
+  providers: Record<AIProviderType, ProviderSpecificConfig>;
+  // Fallbacks for direct access
+  provider?: AIProviderType;
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+  temperature?: number;
+}
 
 export interface WallpaperOption {
   id: string;
@@ -210,7 +227,7 @@ export interface LectureItem {
   summary: string;
 }
 
-export type ThemePalette = 'default' | 'forest' | 'midnight' | 'sunset' | 'nord' | 'lavender';
+export type ThemePalette = 'default' | 'kawaii' | 'forest' | 'midnight' | 'sunset' | 'nord' | 'lavender' | 'starbucks';
 
 export interface ThemeOption {
   id: ThemePalette;

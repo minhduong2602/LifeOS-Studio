@@ -4,7 +4,8 @@ import {
   Search, 
   Plus, 
   RefreshCw, 
-  LayoutGrid, 
+  LayoutGrid,
+  LayoutDashboard, 
   List, 
   Calendar as CalendarIcon,
   Filter,
@@ -13,7 +14,8 @@ import {
   Zap,
   Palette,
   ChevronDown,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Bot
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TaskPriority, ViewMode, ThemePalette } from '../types';
@@ -43,7 +45,12 @@ export const Navbar: React.FC = () => {
     availableThemes,
     setIsThemeModalOpen,
     setIsWallpaperModalOpen,
+    aiConfig,
+    getActiveAIConfig,
+    setIsAISettingsModalOpen,
   } = useApp();
+
+  const activeAI = getActiveAIConfig();
 
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
   const currentThemeObj = availableThemes.find((t) => t.id === theme) || availableThemes[0];
@@ -53,34 +60,29 @@ export const Navbar: React.FC = () => {
 
   const getBreadcrumbTitle = () => {
     switch (activeView) {
-      case 'glass_dashboard':
-        return 'Life Operating System';
-      case 'lectures':
-        return 'My Lectures & Knowledge Stacks';
-      case 'image_notes':
-        return 'Image Notes & Visual Assets';
-      case 'kanban':
-      case 'list':
+      case 'today':
+        return 'Hôm nay & Lịch trình';
+      case 'tasks':
       case 'calendar':
-        return activeProject ? `${activeProject.icon} ${activeProject.name}` : 'Personal Task Board';
+        return activeProject ? `${activeProject.icon} ${activeProject.name}` : 'Nhiệm vụ & Công việc';
       case 'daily_agenda':
-        return 'Daily Planner & Timeblocking';
-      case 'habit_tracker':
-        return 'Habit Streak Matrix';
+        return 'Lập kế hoạch ngày';
       case 'page':
-        return activePage ? `${activePage.icon || '📄'} ${activePage.title}` : 'Notion Document';
+        return activePage ? `${activePage.icon || '📄'} ${activePage.title}` : 'Tài liệu & Ghi chú';
+      case 'projects':
+        return 'Trung tâm dự án';
       case 'sqlite_console':
-        return 'Local SQLite Console & Tables';
+        return 'Cơ sở dữ liệu SQLite';
       case 'sync_center':
-        return 'Cloud Sync & Zero-Lockin Snapshots';
-      case 'android_build':
-        return 'Android ARM64 & Tauri Release Hub';
+        return 'Đồng bộ & Sao lưu';
+      case 'settings':
+        return 'Cài đặt AI & Hệ thống';
       default:
         return 'Life OS';
     }
   };
 
-  const isTaskView = activeView === 'kanban' || activeView === 'list' || activeView === 'calendar';
+  const isTaskView = activeView === 'tasks' || activeView === 'calendar';
 
   return (
     <header className="h-14 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 flex items-center justify-between sticky top-0 z-30 select-none">
@@ -89,8 +91,8 @@ export const Navbar: React.FC = () => {
         <button
           id="nav-menu-toggle-btn"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 lg:hidden"
-          title="Toggle Navigation"
+          className="p-1.5 rounded-md hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-600 dark:text-stone-300 md:hidden cursor-pointer"
+          title="Mở menu"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -109,62 +111,49 @@ export const Navbar: React.FC = () => {
           <input
             id="navbar-search-input"
             type="text"
-            placeholder="Search all items..."
+            placeholder="Tìm kiếm mọi thứ..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-stone-100 dark:bg-stone-800 text-xs text-stone-900 dark:text-stone-100 pl-8 pr-3 py-1.5 rounded-md border border-transparent focus:border-stone-300 dark:focus:border-stone-700 focus:outline-hidden transition-all placeholder:text-stone-400"
+            className="w-full theme-inner-box text-xs theme-text-main pl-8 pr-3 py-1.5 rounded-md border border-stone-200/40 dark:border-stone-700/40 focus:outline-hidden transition-all placeholder:text-stone-400"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-600"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-stone-400 hover:text-stone-200"
             >
               ×
             </button>
           )}
         </div>
 
-        {/* Task View Switcher (Kanban / List / Calendar) */}
+        {/* Task View Switcher (Feed / Calendar) */}
         {isTaskView && (
-          <div className="flex items-center bg-stone-100 dark:bg-stone-800 p-0.5 rounded-lg border border-stone-200 dark:border-stone-700">
-            <button
-              id="view-toggle-kanban"
-              onClick={() => setActiveView('kanban')}
-              className={`p-1.5 rounded-md text-xs font-medium flex items-center space-x-1 transition-colors ${
-                activeView === 'kanban'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-100'
-              }`}
-              title="Kanban Board View"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Board</span>
-            </button>
+          <div className="hidden sm:flex items-center theme-inner-box p-0.5 rounded-lg border border-stone-200/40 dark:border-stone-700/40">
             <button
               id="view-toggle-list"
-              onClick={() => setActiveView('list')}
-              className={`p-1.5 rounded-md text-xs font-medium flex items-center space-x-1 transition-colors ${
-                activeView === 'list'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-100'
+              onClick={() => setActiveView('tasks')}
+              className={`p-1.5 rounded-md text-xs font-medium flex items-center space-x-1 transition-colors cursor-pointer ${
+                activeView === 'tasks'
+                  ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                  : 'theme-text-muted hover:theme-text-main'
               }`}
-              title="Table List View"
+              title="Xem dạng danh sách"
             >
               <List className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Table</span>
+              <span>Danh sách</span>
             </button>
             <button
               id="view-toggle-calendar"
               onClick={() => setActiveView('calendar')}
-              className={`p-1.5 rounded-md text-xs font-medium flex items-center space-x-1 transition-colors ${
+              className={`p-1.5 rounded-md text-xs font-medium flex items-center space-x-1 transition-colors cursor-pointer ${
                 activeView === 'calendar'
-                  ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-stone-100 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-900 dark:hover:text-stone-100'
+                  ? 'bg-emerald-600 text-white shadow-2xs font-bold'
+                  : 'theme-text-muted hover:theme-text-main'
               }`}
-              title="Calendar View"
+              title="Xem dạng lịch"
             >
               <CalendarIcon className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Calendar</span>
+              <span>Lịch</span>
             </button>
           </div>
         )}
@@ -176,13 +165,13 @@ export const Navbar: React.FC = () => {
               id="navbar-priority-filter"
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value as TaskPriority | 'all')}
-              className="bg-stone-100 dark:bg-stone-800 text-xs text-stone-700 dark:text-stone-300 py-1.5 px-2 rounded-md border border-stone-200 dark:border-stone-700 focus:outline-hidden"
+              className="theme-inner-box text-xs theme-text-main py-1.5 px-2 rounded-md border border-stone-200/40 dark:border-stone-700/40 focus:outline-hidden font-semibold cursor-pointer"
             >
-              <option value="all">All Priorities</option>
-              <option value="urgent">🔴 Urgent</option>
-              <option value="high">🟠 High</option>
-              <option value="medium">🟡 Medium</option>
-              <option value="low">🟢 Low</option>
+              <option value="all">Tất cả mức độ</option>
+              <option value="urgent">🔴 Khẩn cấp</option>
+              <option value="high">🟠 Cao</option>
+              <option value="medium">🟡 Trung bình</option>
+              <option value="low">🟢 Thấp</option>
             </select>
           </div>
         )}
@@ -190,12 +179,12 @@ export const Navbar: React.FC = () => {
         {/* Backdrop Wallpaper Trigger */}
         <button
           onClick={() => setIsWallpaperModalOpen(true)}
-          className="p-1.5 rounded-md text-xs font-medium border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-750 flex items-center space-x-1.5 transition-all"
-          title="Change Wallpaper Backdrop"
+          className="p-1.5 rounded-md text-xs font-semibold border border-stone-200/40 dark:border-stone-700/40 theme-inner-box theme-text-main hover:brightness-110 flex items-center space-x-1.5 transition-all cursor-pointer"
+          title="Đổi hình nền không gian"
           id="navbar-wallpaper-btn"
         >
-          <ImageIcon className="w-3.5 h-3.5 text-emerald-500" />
-          <span className="hidden sm:inline text-xs">Backdrop</span>
+          <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden sm:inline text-xs">Hình nền</span>
         </button>
 
         {/* Theme Palette Switcher */}
@@ -203,16 +192,16 @@ export const Navbar: React.FC = () => {
           <button
             id="navbar-theme-btn"
             onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
-            className="p-1.5 rounded-md text-xs font-medium border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-750 flex items-center space-x-1.5 transition-all"
-            title={`Active Theme: ${currentThemeObj.name} (Click to toggle or manage palettes)`}
+            className="p-1.5 rounded-md text-xs font-semibold border border-stone-200/40 dark:border-stone-700/40 theme-inner-box theme-text-main hover:brightness-110 flex items-center space-x-1.5 transition-all cursor-pointer"
+            title={`Chủ đề: ${currentThemeObj.name}`}
           >
-            <Palette className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="hidden sm:inline text-xs font-medium">{currentThemeObj.name.split(' ')[0]}</span>
+            <Palette className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="hidden sm:inline text-xs font-semibold">{currentThemeObj.name.split(' ')[0]}</span>
             <div 
-              className="w-2.5 h-2.5 rounded-full border border-stone-400/50 shadow-2xs"
+              className="w-2.5 h-2.5 rounded-full border border-stone-400/50 shadow-2xs" 
               style={{ backgroundColor: currentThemeObj.previewColors.primary }} 
             />
-            <ChevronDown className="w-3 h-3 text-stone-400" />
+            <ChevronDown className="w-3 h-3 theme-text-muted" />
           </button>
 
           {/* Quick Theme Dropdown Popover */}
@@ -224,7 +213,7 @@ export const Navbar: React.FC = () => {
               />
               <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl shadow-xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-stone-400 flex items-center justify-between">
-                  <span>Color Palettes</span>
+                  <span>Bảng màu giao diện</span>
                   <span className="text-[9px] text-emerald-500 font-mono">SQLite DB</span>
                 </div>
 
@@ -238,7 +227,7 @@ export const Navbar: React.FC = () => {
                         setTheme(opt.id);
                         setIsThemeDropdownOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
                         isCur
                           ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-semibold'
                           : 'hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300'
@@ -269,9 +258,9 @@ export const Navbar: React.FC = () => {
                       setIsThemeDropdownOpen(false);
                       setIsThemeModalOpen(true);
                     }}
-                    className="w-full text-center py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 rounded-md transition-colors"
+                    className="w-full text-center py-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 rounded-md transition-colors cursor-pointer"
                   >
-                    Open Palette Manager...
+                    Quản lý Bảng màu...
                   </button>
                 </div>
               </div>
@@ -279,23 +268,34 @@ export const Navbar: React.FC = () => {
           )}
         </div>
 
+        {/* AI Provider Config Quick Button */}
+        <button
+          id="navbar-ai-settings-btn"
+          onClick={() => setIsAISettingsModalOpen(true)}
+          className="p-1.5 rounded-md text-xs font-medium border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 flex items-center space-x-1.5 transition-all cursor-pointer"
+          title={`Nhà cung cấp AI: ${activeAI.provider} (${activeAI.model})`}
+        >
+          <Bot className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+          <span className="hidden sm:inline font-mono text-[10px] uppercase font-bold">{activeAI.provider}</span>
+        </button>
+
         {/* Cloud Sync Button */}
         <button
           id="navbar-sync-btn"
           onClick={() => triggerSync()}
           disabled={!isOnline || isSyncing}
-          className={`p-1.5 rounded-md text-xs font-medium border flex items-center space-x-1.5 transition-all ${
+          className={`p-1.5 rounded-md text-xs font-medium border flex items-center space-x-1.5 transition-all cursor-pointer ${
             !isOnline
               ? 'bg-stone-100 dark:bg-stone-800 text-stone-400 border-stone-200 dark:border-stone-700 cursor-not-allowed'
               : syncQueue.length > 0
               ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
               : 'bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-700 hover:bg-stone-100'
           }`}
-          title={isOnline ? (syncQueue.length > 0 ? `${syncQueue.length} changes pending sync` : 'All changes saved & synced') : 'Offline: Changes queued locally in SQLite'}
+          title={isOnline ? (syncQueue.length > 0 ? `${syncQueue.length} thay đổi đang chờ đồng bộ` : 'Toàn bộ dữ liệu đã được lưu') : 'Ngoại tuyến: Dữ liệu được lưu an toàn trong SQLite'}
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-emerald-500' : ''}`} />
           <span className="hidden lg:inline">
-            {isSyncing ? 'Syncing...' : syncQueue.length > 0 ? `Sync (${syncQueue.length})` : 'Synced'}
+            {isSyncing ? 'Đang đồng bộ...' : syncQueue.length > 0 ? `Đồng bộ (${syncQueue.length})` : 'Đã đồng bộ'}
           </span>
         </button>
 
@@ -303,10 +303,10 @@ export const Navbar: React.FC = () => {
         <button
           id="navbar-quick-add-btn"
           onClick={() => setIsQuickCaptureOpen(true)}
-          className="bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white px-3 py-1.5 rounded-md text-xs font-medium flex items-center space-x-1.5 shadow-xs transition-all"
+          className="bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white px-3 py-1.5 rounded-md text-xs font-bold flex items-center space-x-1.5 shadow-xs transition-all cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Quick Add</span>
+          <span>Thêm Nhanh</span>
         </button>
       </div>
     </header>

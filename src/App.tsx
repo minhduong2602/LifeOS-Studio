@@ -7,24 +7,21 @@ import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Sidebar } from './components/Sidebar';
 import { Navbar } from './components/Navbar';
+import { BottomNavBar } from './components/BottomNavBar';
 import { TodayTimeline } from './components/TodayTimeline';
-import { GlassDashboard } from './components/GlassDashboard';
-import { ImageNotesView } from './components/ImageNotesView';
-import { LecturesView } from './components/LecturesView';
-import { KanbanBoard } from './components/KanbanBoard';
 import { TaskListView } from './components/TaskListView';
 import { CalendarView } from './components/CalendarView';
 import { NotionBlockEditor } from './components/NotionBlockEditor';
-import { DailyAgenda } from './components/DailyAgenda';
-import { HabitTracker } from './components/HabitTracker';
 import { SQLiteConsole } from './components/SQLiteConsole';
 import { SyncCenter } from './components/SyncCenter';
-import { AndroidBuildModal } from './components/AndroidBuildModal';
 import { QuickCaptureModal } from './components/QuickCaptureModal';
 import { TaskDetailModal } from './components/TaskDetailModal';
 import { ThemeManagerModal } from './components/ThemeManagerModal';
 import { WallpaperSelectorModal } from './components/WallpaperSelectorModal';
 import { AICopilotPlanModal } from './components/AICopilotPlanModal';
+import { AISettingsModal } from './components/AISettingsModal';
+import { SettingsView } from './components/SettingsView';
+import { StarbucksFrapButton } from './components/StarbucksFrapButton';
 import { Plus } from 'lucide-react';
 
 const MainContent: React.FC = () => {
@@ -34,38 +31,28 @@ const MainContent: React.FC = () => {
     switch (activeView) {
       case 'today':
         return <TodayTimeline />;
-      case 'glass_dashboard':
-        return <GlassDashboard />;
-      case 'image_notes':
-        return <ImageNotesView />;
-      case 'lectures':
-        return <LecturesView />;
-      case 'kanban':
-        return <KanbanBoard />;
-      case 'list':
+      case 'tasks':
+      case 'projects':
         return <TaskListView />;
       case 'calendar':
         return <CalendarView />;
-      case 'daily_agenda':
-        return <DailyAgenda />;
-      case 'habit_tracker':
-        return <HabitTracker />;
       case 'page':
         return <NotionBlockEditor />;
       case 'sqlite_console':
         return <SQLiteConsole />;
       case 'sync_center':
         return <SyncCenter />;
-      case 'android_build':
-        return <AndroidBuildModal />;
+      case 'settings':
+        return <SettingsView />;
       default:
         return <TodayTimeline />;
     }
   };
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-stone-100 dark:bg-stone-950 font-sans antialiased text-stone-900 dark:text-stone-100 relative">
-      {/* Notion-Style Sidebar Navigation */}
+    <div className="flex h-screen w-screen overflow-hidden antialiased relative"
+      style={{ background: 'var(--bg-main)', color: 'var(--text-main)', fontFamily: "'Nunito', system-ui, sans-serif" }}>
+      {/* Notion-Style Sidebar Navigation (collapsible / desktop) */}
       <Sidebar />
 
       {/* Main Workspace Stage */}
@@ -74,22 +61,13 @@ const MainContent: React.FC = () => {
         <Navbar />
 
         {/* View Surface Area */}
-        <main className="flex-1 overflow-y-auto relative pb-24 lg:pb-0">
+        <main className="flex-1 overflow-y-auto relative pb-20 md:pb-0">
           {renderActiveView()}
         </main>
-        
-        {/* Mobile Universal Capture Floating Button */}
-        <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
-          <button
-            onClick={() => setIsQuickCaptureOpen(true)}
-            className="w-14 h-14 rounded-full bg-stone-900 dark:bg-stone-100 text-white dark:text-stone-900 flex items-center justify-center shadow-2xl hover:scale-105 active:scale-95 transition-all"
-            title="Universal Capture"
-            id="mobile-nav-quick-add"
-          >
-            <Plus className="w-6 h-6 stroke-[2.5]" />
-          </button>
-        </div>
       </div>
+
+      {/* Mobile-First Native Bottom Navigation Bar */}
+      <BottomNavBar />
 
       {/* Global Modals & Drawers */}
       <QuickCaptureModal />
@@ -97,6 +75,10 @@ const MainContent: React.FC = () => {
       <ThemeManagerModal />
       <WallpaperSelectorModal />
       <AICopilotPlanModal />
+      <AISettingsModal />
+
+      {/* Signature Starbucks Frap Floating Action Button */}
+      <StarbucksFrapButton />
     </div>
   );
 };

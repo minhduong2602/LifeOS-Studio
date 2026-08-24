@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircle2, 
   Circle, 
@@ -6,31 +6,55 @@ import {
   Clock, 
   Trash2, 
   Plus, 
-  MoreHorizontal,
-  Folder
+  Folder,
+  Tag,
+  Search,
+  Filter,
+  Check,
+  Flame,
+  Sparkles,
+  PenLine,
+  AlertTriangle,
+  ArrowUp,
+  ListChecks
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { Task, TaskPriority, TaskStatus } from '../types';
+
+const PRIORITY_STYLES: Record<string, { bg: string; color: string; border: string }> = {
+  urgent: { bg: '#FEE2E2', color: '#DC2626', border: '#FECACA' },
+  high:   { bg: '#FEF3C7', color: '#D97706', border: '#FDE68A' },
+  medium: { bg: '#E0F2FE', color: '#0284C7', border: '#BAE6FD' },
+  low:    { bg: '#D1FAE5', color: '#059669', border: '#A7F3D0' },
+};
 
 export const TaskListView: React.FC = () => {
   const {
     tasks,
     projects,
     selectedProjectId,
+    setSelectedProjectId,
     searchQuery,
-    filterPriority,
-    filterStatus,
+    setSearchQuery,
     setSelectedTaskId,
     updateTask,
     deleteTask,
+    addTask,
     setIsQuickCaptureOpen,
     triggerCelebration,
   } = useApp();
 
+  const [activeTab, setActiveTab] = useState<TaskStatus | 'all' | 'urgent'>('all');
+  const [quickInput, setQuickInput] = useState('');
+
   const filteredTasks = tasks.filter((task) => {
     if (selectedProjectId !== 'all' && task.projectId !== selectedProjectId) return false;
-    if (filterPriority !== 'all' && task.priority !== filterPriority) return false;
-    if (filterStatus !== 'all' && task.status !== filterStatus) return false;
+    if (activeTab === 'urgent') {
+      if (task.priority !== 'urgent') return false;
+    } else if (activeTab !== 'all') {
+      if (task.status !== activeTab) return false;
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = task.title.toLowerCase().includes(q);
@@ -50,122 +74,221 @@ export const TaskListView: React.FC = () => {
     }
   };
 
-  const getPriorityBadge = (priority: TaskPriority) => {
-    switch (priority) {
-      case 'urgent':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-medium">Urgent</span>;
-      case 'high':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-medium">High</span>;
-      case 'medium':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-medium">Medium</span>;
-      case 'low':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 font-medium">Low</span>;
-    }
+  const handleQuickAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickInput.trim()) return;
+    addTask({
+      title: quickInput.trim(),
+      status: 'todo',
+      priority: 'medium',
+      projectId: selectedProjectId !== 'all' ? selectedProjectId : undefined,
+      order: 0,
+    });
+    setQuickInput('');
+    triggerCelebration();
   };
 
-  const getStatusBadge = (status: TaskStatus) => {
-    switch (status) {
-      case 'backlog':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300">Backlog</span>;
-      case 'todo':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-medium">To Do</span>;
-      case 'in_progress':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-medium">In Progress</span>;
-      case 'in_review':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-medium">In Review</span>;
-      case 'done':
-        return <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-medium">Done</span>;
-    }
-  };
+  const completedCount = tasks.filter((t) => t.status === 'done').length;
+  const pendingCount = tasks.filter((t) => t.status !== 'done').length;
+
+  const tabs = [
+    { id: 'all', label: 'Tất cả', count: tasks.length, bg: '#FFB5C2', activeBg: 'linear-gradient(135deg, #FFB5C2, #FF8FAB)' },
+    { id: 'todo', label: 'Cần làm', count: tasks.filter((t) => t.status === 'todo').length, bg: '#BDE0FE', activeBg: 'linear-gradient(135deg, #BDE0FE, #93C5FD)' },
+    { id: 'in_progress', label: 'Đang làm', count: tasks.filter((t) => t.status === 'in_progress').length, bg: '#E8D5F5', activeBg: 'linear-gradient(135deg, #E8D5F5, #C4B5FD)' },
+    { id: 'urgent', label: 'Khẩn cấp', count: tasks.filter((t) => t.priority === 'urgent').length, bg: '#FECDD3', activeBg: 'linear-gradient(135deg, #FECDD3, #FDA4AF)' },
+    { id: 'done', label: 'Đã xong', count: completedCount, bg: '#B8E8D0', activeBg: 'linear-gradient(135deg, #B8E8D0, #6EE7B7)' },
+  ];
 
   return (
-    <div className="h-full flex flex-col p-4 md:p-6 overflow-y-auto bg-stone-50/50 dark:bg-stone-950">
-      {/* Table Container */}
-      <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl overflow-hidden shadow-2xs">
-        <div className="p-4 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between">
-          <div className="text-xs font-semibold text-stone-700 dark:text-stone-300">
-            Database Table View ({filteredTasks.length} entries)
-          </div>
-          <button
-            onClick={() => setIsQuickCaptureOpen(true)}
-            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center space-x-1"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Row</span>
-          </button>
+    <div className="h-full flex flex-col p-4 sm:p-6 overflow-y-auto max-w-3xl mx-auto w-full pb-28">
+      {/* Header */}
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>
+            Công Việc & Nhiệm Vụ
+          </h1>
+          <p className="text-xs font-semibold mt-0.5" style={{ color: 'var(--text-dim)' }}>
+            {pendingCount} việc cần làm · {completedCount} đã hoàn thành
+          </p>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-stone-50 dark:bg-stone-800/60 text-stone-500 dark:text-stone-400 border-b border-stone-200 dark:border-stone-800 font-medium">
-                <th className="py-2.5 px-4 w-10">Done</th>
-                <th className="py-2.5 px-4 min-w-[200px]">Task Title</th>
-                <th className="py-2.5 px-3">Status</th>
-                <th className="py-2.5 px-3">Priority</th>
-                <th className="py-2.5 px-3">Project</th>
-                <th className="py-2.5 px-3">Due Date</th>
-                <th className="py-2.5 px-3">Estimate</th>
-                <th className="py-2.5 px-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-              {filteredTasks.map((task) => {
-                const project = projects.find((p) => p.id === task.projectId);
-                return (
-                  <tr
-                    key={task.id}
-                    onClick={() => setSelectedTaskId(task.id)}
-                    className="hover:bg-stone-50 dark:hover:bg-stone-800/40 cursor-pointer transition-colors group"
+        {/* Project Selector */}
+        <select
+          value={selectedProjectId}
+          onChange={(e) => setSelectedProjectId(e.target.value)}
+          className="text-xs font-bold py-2 px-3 rounded-2xl focus:outline-none cursor-pointer"
+          style={{ background: 'var(--bg-card)', border: '1.5px solid var(--border-card)', color: 'var(--text-main)' }}
+        >
+          <option value="all">Tất cả dự án</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.icon} {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Quick Add Bar — Kawaii Pill */}
+      <form onSubmit={handleQuickAdd} className="mb-5">
+        <div className="kawaii-card flex items-center p-1.5"
+          style={{ boxShadow: '0 2px 8px rgba(255,143,171,0.1)' }}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ml-1" 
+            style={{ background: 'var(--bg-inner-box)', color: 'var(--text-dim)' }}>
+            <PenLine className="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            value={quickInput}
+            onChange={(e) => setQuickInput(e.target.value)}
+            placeholder="Thêm công việc mới (nhấn Enter)..."
+            className="w-full bg-transparent px-3 py-2 text-xs font-semibold focus:outline-none"
+            style={{ color: 'var(--text-main)' }}
+          />
+          <button
+            type="submit"
+            disabled={!quickInput.trim()}
+            className="kawaii-btn shrink-0 px-4 py-2 text-white text-xs font-black flex items-center gap-1.5 disabled:opacity-30"
+            style={{ background: 'linear-gradient(135deg, #FF8FAB, #A78BFA)' }}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Thêm</span>
+          </button>
+        </div>
+      </form>
+
+      {/* Filter Chips — Pastel Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className="kawaii-btn px-3.5 py-2 text-xs shrink-0 flex items-center gap-1.5 transition-all"
+              style={isActive ? {
+                background: tab.activeBg,
+                color: 'white',
+                boxShadow: '0 3px 10px rgba(0,0,0,0.1)',
+                transform: 'scale(1.04)',
+              } : {
+                background: 'var(--bg-card)',
+                color: 'var(--text-muted)',
+                border: '1.5px solid var(--border-card)',
+              }}
+            >
+              <span className="font-bold">{tab.label}</span>
+              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full"
+                style={isActive ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: 'var(--bg-inner-box)' }}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Task List */}
+      <div className="space-y-2.5 flex-1">
+        <AnimatePresence mode="popLayout">
+          {filteredTasks.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="py-16 text-center kawaii-card"
+            >
+              <div className="kawaii-bubble kawaii-bubble-sky mx-auto mb-3 kawaii-float">
+                <ListChecks className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-bold" style={{ color: 'var(--text-main)' }}>Không có công việc nào</p>
+              <p className="text-xs font-medium mt-1" style={{ color: 'var(--text-dim)' }}>Dùng thanh thêm nhanh ở trên để tạo mới</p>
+            </motion.div>
+          ) : (
+            filteredTasks.map((task, index) => {
+              const isDone = task.status === 'done';
+              const project = projects.find((p) => p.id === task.projectId);
+              const priorityStyle = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.medium;
+
+              return (
+                <motion.div
+                  key={task.id}
+                  layout
+                  initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ delay: index * 0.03, type: 'spring', stiffness: 300, damping: 25 }}
+                  onClick={() => setSelectedTaskId(task.id)}
+                  className={`group kawaii-card p-3.5 flex items-center gap-3 cursor-pointer transition-all ${
+                    isDone ? 'opacity-50' : ''
+                  }`}
+                  style={{ borderLeft: `4px solid ${priorityStyle.color}20` }}
+                >
+                  {/* Checkbox */}
+                  <button
+                    type="button"
+                    onClick={(e) => handleToggleDone(e, task)}
+                    className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border-2 transition-all cursor-pointer"
+                    style={isDone
+                      ? { background: 'linear-gradient(135deg, #B8E8D0, #6EE7B7)', borderColor: 'transparent', color: 'white' }
+                      : { borderColor: priorityStyle.color + '40', color: priorityStyle.color }
+                    }
                   >
-                    <td className="py-2.5 px-4" onClick={(e) => handleToggleDone(e, task)}>
-                      {task.status === 'done' ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 fill-emerald-100 dark:fill-emerald-950" />
-                      ) : (
-                        <Circle className="w-4 h-4 text-stone-400 hover:text-stone-600" />
-                      )}
-                    </td>
-                    <td className="py-2.5 px-4 font-medium text-stone-900 dark:text-stone-100">
-                      <span className={task.status === 'done' ? 'line-through text-stone-400' : ''}>
+                    {isDone && <Check className="w-4 h-4 stroke-[3]" />}
+                  </button>
+
+                  {/* Content */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-bold truncate ${isDone ? 'line-through' : ''}`}
+                        style={{ color: isDone ? 'var(--text-dim)' : 'var(--text-main)' }}>
                         {task.title}
                       </span>
-                    </td>
-                    <td className="py-2.5 px-3">{getStatusBadge(task.status)}</td>
-                    <td className="py-2.5 px-3">{getPriorityBadge(task.priority)}</td>
-                    <td className="py-2.5 px-3 text-stone-600 dark:text-stone-300">
-                      {project ? (
-                        <span className="flex items-center space-x-1">
-                          <span>{project.icon}</span>
+                      {task.priority === 'urgent' && (
+                        <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full font-black"
+                          style={{ background: priorityStyle.bg, color: priorityStyle.color }}>
+                          Khẩn cấp
+                        </span>
+                      )}
+                      {task.priority === 'high' && (
+                        <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full font-black"
+                          style={{ background: priorityStyle.bg, color: priorityStyle.color }}>
+                          Ưu tiên
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2.5 mt-1 text-[11px] flex-wrap" style={{ color: 'var(--text-dim)' }}>
+                      {project && (
+                        <span className="flex items-center gap-1 font-semibold">
+                          <Folder className="w-3 h-3" />
                           <span>{project.name}</span>
                         </span>
-                      ) : (
-                        <span className="text-stone-400">—</span>
                       )}
-                    </td>
-                    <td className="py-2.5 px-3 text-stone-600 dark:text-stone-300">
-                      {task.dueDate || <span className="text-stone-400">—</span>}
-                    </td>
-                    <td className="py-2.5 px-3 text-stone-500">
-                      {task.estimatedMinutes ? `${task.estimatedMinutes} min` : '—'}
-                    </td>
-                    <td className="py-2.5 px-3 text-right">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Delete "${task.title}"?`)) deleteTask(task.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-stone-400 hover:text-rose-500 transition-opacity"
-                        title="Delete task"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      {task.dueDate && (
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />
+                          <span>{task.dueDate}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Delete */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteTask(task.id);
+                    }}
+                    className="p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                    style={{ color: 'var(--text-dim)' }}
+                    title="Xóa công việc"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </motion.div>
+              );
+            })
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

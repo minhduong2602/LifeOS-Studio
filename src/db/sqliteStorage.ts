@@ -594,6 +594,34 @@ export class SQLiteStorageEngine {
     return newProject;
   }
 
+  public updateProject(id: string, updates: Partial<Project>): Project | null {
+    const index = this.inMemoryCache.projects.findIndex((p) => p.id === id);
+    if (index === -1) return null;
+    const updated: Project = {
+      ...this.inMemoryCache.projects[index],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    this.inMemoryCache.projects[index] = updated;
+    this.save(STORAGE_KEYS.PROJECTS, this.inMemoryCache.projects);
+    this.queueSync('projects', id, 'UPDATE', updated);
+    this.notify();
+    return updated;
+  }
+
+  public deleteProject(id: string): boolean {
+    this.inMemoryCache.projects = this.inMemoryCache.projects.filter((p) => p.id !== id);
+    // Unassign tasks belonging to this deleted project
+    this.inMemoryCache.tasks = this.inMemoryCache.tasks.map((t) => 
+      t.projectId === id ? { ...t, projectId: undefined, updatedAt: new Date().toISOString() } : t
+    );
+    this.save(STORAGE_KEYS.PROJECTS, this.inMemoryCache.projects);
+    this.save(STORAGE_KEYS.TASKS, this.inMemoryCache.tasks);
+    this.queueSync('projects', id, 'DELETE', { id });
+    this.notify();
+    return true;
+  }
+
   // --- Page Methods ---
   public getPages(): Page[] {
     return [...this.inMemoryCache.pages];
