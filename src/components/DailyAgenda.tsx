@@ -107,12 +107,67 @@ export const DailyAgenda: React.FC = () => {
     }
   };
 
+  const generateSmartSchedule = () => {
+    if (timeBlocks.length === 0) {
+      return [
+        { label: '🧠 Deep Work', time: '08:30 – 11:00', type: 'deep_work' },
+        { label: '📋 Admin', time: '13:30 – 14:30', type: 'admin' },
+        { label: '🏋️ Exercise', time: '18:00 – 19:00', type: 'personal' },
+        { label: '🔋 Low-energy tasks', time: '19:30 – 20:30', type: 'break' }
+      ];
+    }
+
+    const categories: Record<string, { start: string; end: string }> = {};
+    timeBlocks.forEach(tb => {
+      const parts = tb.timeSlot.split('-');
+      if (parts.length === 2) {
+        const start = parts[0].trim();
+        const end = parts[1].trim();
+        
+        if (!categories[tb.category]) {
+          categories[tb.category] = { start, end };
+        } else {
+          if (start < categories[tb.category].start) categories[tb.category].start = start;
+          if (end > categories[tb.category].end) categories[tb.category].end = end;
+        }
+      }
+    });
+
+    const formatCat = (cat: string) => {
+      switch(cat) {
+        case 'deep_work': return '🧠 Deep Work';
+        case 'admin': return '📋 Admin';
+        case 'meeting': return '👥 Meeting';
+        case 'personal': return '🌿 Personal / Exercise';
+        case 'break': return '🔋 Low-energy tasks';
+        default: return cat;
+      }
+    };
+
+    const schedule = Object.entries(categories).map(([cat, data]) => ({
+      label: formatCat(cat),
+      time: `${data.start} – ${data.end}`,
+      startVal: data.start,
+      type: cat
+    }));
+    
+    schedule.sort((a, b) => a.startVal.localeCompare(b.startVal));
+    
+    return schedule.map(s => ({ label: s.label, time: s.time, type: s.type }));
+  };
+
+  const smartSchedule = generateSmartSchedule();
+  
+  // Find highest energy phase for Frog card banner
+  const deepWorkBlock = smartSchedule.find(s => s.type === 'deep_work');
+  const frogEnergyPhase = deepWorkBlock ? `Peak Focus Phase: ${deepWorkBlock.time}` : 'Adaptive Energy Phase Active';
+
   return (
     <div className="h-full flex flex-col p-4 md:p-6 overflow-y-auto bg-stone-50/50 dark:bg-stone-950 space-y-6">
-      {/* Top Banner: Eat That Frog & Focus Sprint Timer */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {/* Top Banner: Eat That Frog, Smart Schedule & Focus Sprint Timer */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {/* Eat That Frog Card */}
-        <div className="lg:col-span-2 bg-linear-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-200 dark:border-amber-900/60 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
+        <div className="bg-linear-to-r from-amber-500/10 via-orange-500/10 to-rose-500/10 border border-amber-200 dark:border-amber-900/60 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
           <div>
             <div className="flex items-center space-x-2 text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-1">
               <Target className="w-4 h-4 text-amber-600 dark:text-amber-400" />
@@ -125,20 +180,10 @@ export const DailyAgenda: React.FC = () => {
                   <h3 className="text-base font-bold text-stone-900 dark:text-stone-100">
                     {frogTask.title}
                   </h3>
-                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5">
+                  <p className="text-xs text-stone-600 dark:text-stone-400 mt-0.5 line-clamp-2">
                     {frogTask.description || 'Conquer this priority first before checking non-essential notifications.'}
                   </p>
                 </div>
-                <button
-                  onClick={() => {
-                    updateTask(frogTask.id, { status: 'done' });
-                    triggerCelebration();
-                  }}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-xs flex items-center space-x-1 shrink-0 ml-3"
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Mark Done</span>
-                </button>
               </div>
             ) : (
               <div className="mt-2 text-xs text-stone-500 dark:text-stone-400">
@@ -146,10 +191,48 @@ export const DailyAgenda: React.FC = () => {
               </div>
             )}
           </div>
+          
+          <div className="mt-3">
+             {frogTask && (
+                <button
+                  onClick={() => {
+                    updateTask(frogTask.id, { status: 'done' });
+                    triggerCelebration();
+                  }}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-xs flex items-center space-x-1 mb-3 w-max"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Mark Done</span>
+                </button>
+             )}
+            <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/40 flex flex-wrap items-center justify-between text-[11px] text-amber-700 dark:text-amber-400 gap-2">
+              <span>{frogEnergyPhase}</span>
+              <span>Zero Distraction Rule</span>
+            </div>
+          </div>
+        </div>
 
-          <div className="mt-3 pt-3 border-t border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between text-[11px] text-amber-700 dark:text-amber-400">
-            <span>High Cognitive Energy Phase: 08:30 – 12:30</span>
-            <span>Zero Distraction Rule Active</span>
+        {/* AI Smart Schedule Insight */}
+        <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-xl p-4 flex flex-col justify-between shadow-2xs">
+          <div>
+            <div className="flex items-center justify-between text-xs font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider mb-3">
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-4 h-4 text-blue-500" />
+                <span>AI Smart Schedule</span>
+              </div>
+            </div>
+            
+            <div className="space-y-2.5">
+              {smartSchedule.slice(0, 4).map(s => (
+                <div key={s.label} className="flex justify-between items-center text-xs">
+                  <span className="font-medium text-stone-700 dark:text-stone-300">{s.label}</span>
+                  <span className="text-stone-500 dark:text-stone-400 font-mono tracking-tight">{s.time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 pt-2 border-t border-stone-100 dark:border-stone-800 text-[10px] text-stone-400">
+            Adapted from your behavior & energy patterns
           </div>
         </div>
 

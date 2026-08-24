@@ -239,7 +239,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
 
   // Default to the new glass dashboard view directly inspired by the user's uploaded screenshot
-  const [activeView, setActiveView] = useState<ViewMode>('glass_dashboard');
+  const [activeView, setActiveView] = useState<ViewMode>('today');
   const [selectedPageId, setSelectedPageId] = useState<string | null>('page-1');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedProjectId, setSelectedProjectId] = useState<string | 'all'>('all');

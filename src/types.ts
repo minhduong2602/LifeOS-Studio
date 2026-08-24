@@ -134,6 +134,7 @@ export interface CloudBackupSnapshot {
 }
 
 export type ViewMode = 
+  | 'today'
   | 'glass_dashboard'
   | 'kanban' 
   | 'list' 
