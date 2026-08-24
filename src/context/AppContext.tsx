@@ -1,0 +1,632 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import confetti from 'canvas-confetti';
+import {
+  Task,
+  Project,
+  Page,
+  Block,
+  Habit,
+  HabitLog,
+  TimeBlock,
+  SyncQueueItem,
+  CloudBackupSnapshot,
+  ViewMode,
+  TaskPriority,
+  TaskStatus,
+  ThemePalette,
+  ThemeOption,
+  WallpaperOption,
+  ImageNoteItem,
+  LectureItem,
+} from '../types';
+import { sqliteEngine, DEFAULT_WALLPAPERS } from '../db/sqliteStorage';
+
+export const AVAILABLE_THEMES: ThemeOption[] = [
+  {
+    id: 'default',
+    name: 'Notion Classic',
+    tagline: 'Timeless warm stone with indigo accents',
+    icon: '🪐',
+    previewColors: {
+      bg: '#f5f5f4',
+      sidebar: '#fafaf9',
+      card: '#ffffff',
+      primary: '#4f46e5',
+      accent: '#6366f1',
+      text: '#1c1917',
+    },
+  },
+  {
+    id: 'forest',
+    name: 'Forest Emerald',
+    tagline: 'Deep pine moss with radiant emerald & sage',
+    icon: '🌲',
+    previewColors: {
+      bg: '#051c14',
+      sidebar: '#02130d',
+      card: '#0a2e22',
+      primary: '#059669',
+      accent: '#10b981',
+      text: '#ecfdf5',
+    },
+  },
+  {
+    id: 'midnight',
+    name: 'Obsidian Midnight',
+    tagline: 'Deep space navy with neon sapphire & cyan glow',
+    icon: '🌌',
+    previewColors: {
+      bg: '#070b14',
+      sidebar: '#050810',
+      card: '#0d1527',
+      primary: '#0284c7',
+      accent: '#38bdf8',
+      text: '#f0f9ff',
+    },
+  },
+  {
+    id: 'sunset',
+    name: 'Dusk Sunset',
+    tagline: 'Warm terracotta, golden honey & twilight coral',
+    icon: '🌅',
+    previewColors: {
+      bg: '#1a0c0f',
+      sidebar: '#120709',
+      card: '#291319',
+      primary: '#ea580c',
+      accent: '#f97316',
+      text: '#fff1f2',
+    },
+  },
+  {
+    id: 'nord',
+    name: 'Arctic Nord',
+    tagline: 'Glacier slate, frosty ice cyan & arctic calm',
+    icon: '❄️',
+    previewColors: {
+      bg: '#242933',
+      sidebar: '#1d212a',
+      card: '#2e3440',
+      primary: '#475569',
+      accent: '#38bdf8',
+      text: '#eceff4',
+    },
+  },
+  {
+    id: 'lavender',
+    name: 'Velvet Lavender',
+    tagline: 'Muted dusty amethyst & twilight violet plum',
+    icon: '🔮',
+    previewColors: {
+      bg: '#150a21',
+      sidebar: '#0e0617',
+      card: '#231238',
+      primary: '#7c3aed',
+      accent: '#a855f7',
+      text: '#faf5ff',
+    },
+  },
+];
+
+interface AppContextType {
+  // State
+  tasks: Task[];
+  projects: Project[];
+  pages: Page[];
+  habits: Habit[];
+  habitLogs: HabitLog[];
+  timeBlocks: TimeBlock[];
+  syncQueue: SyncQueueItem[];
+  backups: CloudBackupSnapshot[];
+  imageNotes: ImageNoteItem[];
+  lectures: LectureItem[];
+  
+  // Wallpaper & Theme State
+  theme: ThemePalette;
+  setTheme: (theme: ThemePalette) => void;
+  availableThemes: ThemeOption[];
+  isThemeModalOpen: boolean;
+  setIsThemeModalOpen: (open: boolean) => void;
+  wallpapers: WallpaperOption[];
+  activeWallpaper: string;
+  setActiveWallpaper: (url: string) => void;
+  isWallpaperModalOpen: boolean;
+  setIsWallpaperModalOpen: (open: boolean) => void;
+
+  // Navigation & Selection
+  activeView: ViewMode;
+  setActiveView: (view: ViewMode) => void;
+  selectedPageId: string | null;
+  setSelectedPageId: (id: string | null) => void;
+  selectedTaskId: string | null;
+  setSelectedTaskId: (id: string | null) => void;
+  selectedProjectId: string | 'all';
+  setSelectedProjectId: (id: string | 'all') => void;
+  
+  // Search & Filtering
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  filterPriority: TaskPriority | 'all';
+  setFilterPriority: (priority: TaskPriority | 'all') => void;
+  filterStatus: TaskStatus | 'all';
+  setFilterStatus: (status: TaskStatus | 'all') => void;
+
+  // UI Controls
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (open: boolean) => void;
+  isQuickCaptureOpen: boolean;
+  setIsQuickCaptureOpen: (open: boolean) => void;
+  isOnline: boolean;
+  setIsOnline: (online: boolean) => void;
+  isSyncing: boolean;
+  triggerSync: () => Promise<void>;
+  
+  // Task Actions
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'synced'>) => Task;
+  updateTask: (id: string, updates: Partial<Task>) => void;
+  deleteTask: (id: string) => void;
+  moveTaskStatus: (taskId: string, newStatus: TaskStatus, newIndex?: number) => void;
+  reorderTasks: (tasks: Task[]) => void;
+  toggleTaskCompletion: (taskId: string) => void;
+  addQuickTask: (title: string, priority?: TaskPriority) => Task;
+  
+  // Image Notes Actions
+  addImageNote: (note: Omit<ImageNoteItem, 'id' | 'updatedAt'>) => ImageNoteItem;
+  updateImageNote: (id: string, updates: Partial<ImageNoteItem>) => void;
+  deleteImageNote: (id: string) => void;
+  toggleImageNoteFavorite: (id: string) => void;
+
+  // Lectures Actions
+  addLecture: (lecture: Omit<LectureItem, 'id' | 'lastStudied'>) => LectureItem;
+  updateLecture: (id: string, updates: Partial<LectureItem>) => void;
+  deleteLecture: (id: string) => void;
+  toggleLectureFavorite: (id: string) => void;
+
+  // Project Actions
+  addProject: (proj: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Project;
+
+  // Page Actions
+  addPage: (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt' | 'synced'>) => Page;
+  updatePage: (id: string, updates: Partial<Page>) => void;
+  deletePage: (id: string) => void;
+  
+  // Block Actions
+  getPageBlocks: (pageId: string) => Block[];
+  addBlock: (block: Omit<Block, 'id' | 'updatedAt'>) => Block;
+  updateBlock: (id: string, updates: Partial<Block>) => void;
+  deleteBlock: (id: string) => void;
+  reorderBlocks: (pageId: string, blocks: Block[]) => void;
+
+  // Habit Actions
+  toggleHabit: (habitId: string, date?: string) => void;
+  addHabit: (habit: Omit<Habit, 'id' | 'streak' | 'bestStreak' | 'createdAt'>) => Habit;
+  deleteHabit: (id: string) => void;
+
+  // TimeBlock Actions
+  toggleTimeBlock: (id: string) => void;
+  addTimeBlock: (tb: Omit<TimeBlock, 'id'>) => TimeBlock;
+  deleteTimeBlock: (id: string) => void;
+
+  // Cloud & Backup Actions
+  createBackup: (name?: string) => CloudBackupSnapshot;
+  restoreBackup: (id: string) => boolean;
+  deleteBackup: (id: string) => void;
+  triggerCelebration: () => void;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [tasks, setTasks] = useState<Task[]>(() => sqliteEngine.getTasks());
+  const [projects, setProjects] = useState<Project[]>(() => sqliteEngine.getProjects());
+  const [pages, setPages] = useState<Page[]>(() => sqliteEngine.getPages());
+  const [habits, setHabits] = useState<Habit[]>(() => sqliteEngine.getHabits());
+  const [habitLogs, setHabitLogs] = useState<HabitLog[]>(() => sqliteEngine.getHabitLogs());
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>(() => sqliteEngine.getTimeBlocks());
+  const [syncQueue, setSyncQueue] = useState<SyncQueueItem[]>(() => sqliteEngine.getSyncQueue());
+  const [backups, setBackups] = useState<CloudBackupSnapshot[]>(() => sqliteEngine.getBackups());
+  const [imageNotes, setImageNotes] = useState<ImageNoteItem[]>(() => sqliteEngine.getImageNotes());
+  const [lectures, setLectures] = useState<LectureItem[]>(() => sqliteEngine.getLectures());
+  const [wallpapers] = useState<WallpaperOption[]>(() => sqliteEngine.getWallpapers());
+  const [activeWallpaper, setActiveWallpaperState] = useState<string>(() => sqliteEngine.getActiveWallpaper());
+  const [isWallpaperModalOpen, setIsWallpaperModalOpen] = useState(false);
+
+  // Theme state backed by SQLite
+  const [theme, setThemeState] = useState<ThemePalette>(() => {
+    const saved = sqliteEngine.getSetting('theme_palette', 'default') as ThemePalette;
+    return saved || 'default';
+  });
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
+
+  // Default to the new glass dashboard view directly inspired by the user's uploaded screenshot
+  const [activeView, setActiveView] = useState<ViewMode>('glass_dashboard');
+  const [selectedPageId, setSelectedPageId] = useState<string | null>('page-1');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | 'all'>('all');
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
+  const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isQuickCaptureOpen, setIsQuickCaptureOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => navigator.onLine ?? true);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Set theme attribute on DOM
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const setTheme = useCallback((newTheme: ThemePalette) => {
+    setThemeState(newTheme);
+    sqliteEngine.setSetting('theme_palette', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  }, []);
+
+  // Sync engine listener
+  const refreshFromDb = useCallback(() => {
+    setTasks(sqliteEngine.getTasks());
+    setProjects(sqliteEngine.getProjects());
+    setPages(sqliteEngine.getPages());
+    setHabits(sqliteEngine.getHabits());
+    setHabitLogs(sqliteEngine.getHabitLogs());
+    setTimeBlocks(sqliteEngine.getTimeBlocks());
+    setSyncQueue(sqliteEngine.getSyncQueue());
+    setBackups(sqliteEngine.getBackups());
+    setImageNotes(sqliteEngine.getImageNotes());
+    setLectures(sqliteEngine.getLectures());
+    setActiveWallpaperState(sqliteEngine.getActiveWallpaper());
+    const savedTheme = sqliteEngine.getSetting('theme_palette', 'default') as ThemePalette;
+    if (savedTheme && savedTheme !== theme) {
+      setThemeState(savedTheme);
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    const unsubscribe = sqliteEngine.subscribe(refreshFromDb);
+    
+    // Window online/offline listener
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Keyboard shortcut for quick capture: Ctrl+K or Cmd+K or 'N'
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsQuickCaptureOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [refreshFromDb]);
+
+  const triggerCelebration = useCallback(() => {
+    try {
+      confetti({
+        particleCount: 80,
+        spread: 60,
+        origin: { y: 0.8 },
+        colors: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'],
+      });
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const triggerSync = async () => {
+    if (!isOnline) return;
+    setIsSyncing(true);
+    // Simulate real cloud sync handshake over network
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    sqliteEngine.clearSyncQueue();
+    setIsSyncing(false);
+  };
+
+  // Task actions
+  const addTask = (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'synced'>) => {
+    return sqliteEngine.addTask(taskData);
+  };
+
+  const addQuickTask = (title: string, priority: TaskPriority = 'medium') => {
+    const created = sqliteEngine.addTask({
+      title,
+      description: '',
+      status: 'todo',
+      priority,
+      projectId: 'proj-1',
+      tags: ['QuickPlan'],
+      subtasks: [],
+      dueDate: new Date().toISOString().split('T')[0],
+      order: 0,
+    });
+    return created;
+  };
+
+  const toggleTaskCompletion = (taskId: string) => {
+    const task = sqliteEngine.getTaskById(taskId);
+    if (!task) return;
+    const nextStatus: TaskStatus = task.status === 'done' ? 'todo' : 'done';
+    if (nextStatus === 'done') {
+      triggerCelebration();
+    }
+    sqliteEngine.updateTask(taskId, { status: nextStatus });
+  };
+
+  const updateTask = (id: string, updates: Partial<Task>) => {
+    sqliteEngine.updateTask(id, updates);
+  };
+
+  const deleteTask = (id: string) => {
+    sqliteEngine.deleteTask(id);
+    if (selectedTaskId === id) setSelectedTaskId(null);
+  };
+
+  const moveTaskStatus = (taskId: string, newStatus: TaskStatus, newIndex?: number) => {
+    const task = sqliteEngine.getTaskById(taskId);
+    if (!task) return;
+
+    if (newStatus === 'done' && task.status !== 'done') {
+      triggerCelebration();
+    }
+
+    const currentTasks = sqliteEngine.getTasks();
+    const otherTasks = currentTasks.filter((t) => t.id !== taskId);
+    const updatedTask = { ...task, status: newStatus, updatedAt: new Date().toISOString() };
+
+    if (newIndex !== undefined) {
+      const columnTasks = otherTasks.filter((t) => t.status === newStatus);
+      columnTasks.splice(newIndex, 0, updatedTask);
+      const remainingTasks = otherTasks.filter((t) => t.status !== newStatus);
+      const allReordered = [...remainingTasks, ...columnTasks].map((t, idx) => ({ ...t, order: idx }));
+      sqliteEngine.reorderTasks(allReordered);
+      sqliteEngine.updateTask(taskId, { status: newStatus });
+    } else {
+      sqliteEngine.updateTask(taskId, { status: newStatus });
+    }
+  };
+
+  const reorderTasks = (newTasks: Task[]) => {
+    sqliteEngine.reorderTasks(newTasks);
+  };
+
+  // Wallpaper action
+  const setActiveWallpaper = (url: string) => {
+    sqliteEngine.setActiveWallpaper(url);
+    setActiveWallpaperState(url);
+  };
+
+  // Image Notes actions
+  const addImageNote = (note: Omit<ImageNoteItem, 'id' | 'updatedAt'>) => {
+    return sqliteEngine.addImageNote(note);
+  };
+
+  const updateImageNote = (id: string, updates: Partial<ImageNoteItem>) => {
+    sqliteEngine.updateImageNote(id, updates);
+  };
+
+  const deleteImageNote = (id: string) => {
+    sqliteEngine.deleteImageNote(id);
+  };
+
+  const toggleImageNoteFavorite = (id: string) => {
+    sqliteEngine.toggleImageNoteFavorite(id);
+  };
+
+  // Lectures actions
+  const addLecture = (lec: Omit<LectureItem, 'id' | 'lastStudied'>) => {
+    return sqliteEngine.addLecture(lec);
+  };
+
+  const updateLecture = (id: string, updates: Partial<LectureItem>) => {
+    sqliteEngine.updateLecture(id, updates);
+  };
+
+  const deleteLecture = (id: string) => {
+    sqliteEngine.deleteLecture(id);
+  };
+
+  const toggleLectureFavorite = (id: string) => {
+    sqliteEngine.toggleLectureFavorite(id);
+  };
+
+  // Project actions
+  const addProject = (proj: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
+    return sqliteEngine.addProject(proj);
+  };
+
+  // Page actions
+  const addPage = (page: Omit<Page, 'id' | 'createdAt' | 'updatedAt' | 'synced'>) => {
+    const p = sqliteEngine.addPage(page);
+    setSelectedPageId(p.id);
+    setActiveView('page');
+    return p;
+  };
+
+  const updatePage = (id: string, updates: Partial<Page>) => {
+    sqliteEngine.updatePage(id, updates);
+  };
+
+  const deletePage = (id: string) => {
+    sqliteEngine.deletePage(id);
+    const remaining = sqliteEngine.getPages();
+    if (selectedPageId === id) {
+      setSelectedPageId(remaining.length > 0 ? remaining[0].id : null);
+    }
+  };
+
+  // Block actions
+  const getPageBlocks = (pageId: string) => {
+    return sqliteEngine.getBlocks(pageId);
+  };
+
+  const addBlock = (block: Omit<Block, 'id' | 'updatedAt'>) => {
+    return sqliteEngine.addBlock(block);
+  };
+
+  const updateBlock = (id: string, updates: Partial<Block>) => {
+    sqliteEngine.updateBlock(id, updates);
+  };
+
+  const deleteBlock = (id: string) => {
+    sqliteEngine.deleteBlock(id);
+  };
+
+  const reorderBlocks = (pageId: string, blocks: Block[]) => {
+    sqliteEngine.reorderBlocks(pageId, blocks);
+  };
+
+  // Habit actions
+  const toggleHabit = (habitId: string, date?: string) => {
+    const todayStr = date || new Date().toISOString().split('T')[0];
+    const log = sqliteEngine.toggleHabitLog(habitId, todayStr);
+    if (log.completed) {
+      // Check if all habits for today are now completed
+      const allTodayCompleted = habits.every((h) => {
+        if (h.id === habitId) return true;
+        const hl = habitLogs.find((l) => l.habitId === h.id && l.date === todayStr);
+        return hl?.completed;
+      });
+      if (allTodayCompleted) {
+        triggerCelebration();
+      }
+    }
+  };
+
+  const addHabit = (habit: Omit<Habit, 'id' | 'streak' | 'bestStreak' | 'createdAt'>) => {
+    return sqliteEngine.addHabit(habit);
+  };
+
+  const deleteHabit = (id: string) => {
+    sqliteEngine.deleteHabit(id);
+  };
+
+  // TimeBlock actions
+  const toggleTimeBlock = (id: string) => {
+    sqliteEngine.toggleTimeBlock(id);
+  };
+
+  const addTimeBlock = (tb: Omit<TimeBlock, 'id'>) => {
+    return sqliteEngine.addTimeBlock(tb);
+  };
+
+  const deleteTimeBlock = (id: string) => {
+    sqliteEngine.deleteTimeBlock(id);
+  };
+
+  // Cloud & Backup
+  const createBackup = (name?: string) => {
+    return sqliteEngine.createBackup(name);
+  };
+
+  const restoreBackup = (id: string) => {
+    return sqliteEngine.restoreBackup(id);
+  };
+
+  const deleteBackup = (id: string) => {
+    sqliteEngine.deleteBackup(id);
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        tasks,
+        projects,
+        pages,
+        habits,
+        habitLogs,
+        timeBlocks,
+        syncQueue,
+        backups,
+        imageNotes,
+        lectures,
+        theme,
+        setTheme,
+        availableThemes: AVAILABLE_THEMES,
+        isThemeModalOpen,
+        setIsThemeModalOpen,
+        wallpapers,
+        activeWallpaper,
+        setActiveWallpaper,
+        isWallpaperModalOpen,
+        setIsWallpaperModalOpen,
+        activeView,
+        setActiveView,
+        selectedPageId,
+        setSelectedPageId,
+        selectedTaskId,
+        setSelectedTaskId,
+        selectedProjectId,
+        setSelectedProjectId,
+        searchQuery,
+        setSearchQuery,
+        filterPriority,
+        setFilterPriority,
+        filterStatus,
+        setFilterStatus,
+        isSidebarOpen,
+        setIsSidebarOpen,
+        isQuickCaptureOpen,
+        setIsQuickCaptureOpen,
+        isOnline,
+        setIsOnline,
+        isSyncing,
+        triggerSync,
+        addTask,
+        updateTask,
+        deleteTask,
+        moveTaskStatus,
+        reorderTasks,
+        toggleTaskCompletion,
+        addQuickTask,
+        addImageNote,
+        updateImageNote,
+        deleteImageNote,
+        toggleImageNoteFavorite,
+        addLecture,
+        updateLecture,
+        deleteLecture,
+        toggleLectureFavorite,
+        addProject,
+        addPage,
+        updatePage,
+        deletePage,
+        getPageBlocks,
+        addBlock,
+        updateBlock,
+        deleteBlock,
+        reorderBlocks,
+        toggleHabit,
+        addHabit,
+        deleteHabit,
+        toggleTimeBlock,
+        addTimeBlock,
+        deleteTimeBlock,
+        createBackup,
+        restoreBackup,
+        deleteBackup,
+        triggerCelebration,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};

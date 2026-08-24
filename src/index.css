@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --theme-name: 'default';
+    --theme-primary: #4f46e5;
+    --theme-primary-hover: #4338ca;
+    --theme-primary-light: #e0e7ff;
+    --theme-primary-text: #ffffff;
+    --theme-accent: #6366f1;
+  }
+
+  [data-theme="forest"] {
+    --theme-name: 'forest';
+    --theme-primary: #059669;
+    --theme-primary-hover: #047857;
+    --theme-primary-light: #d1fae5;
+    --theme-primary-text: #ffffff;
+    --theme-accent: #10b981;
+  }
+
+  [data-theme="midnight"] {
+    --theme-name: 'midnight';
+    --theme-primary: #0284c7;
+    --theme-primary-hover: #0369a1;
+    --theme-primary-light: #e0f2fe;
+    --theme-primary-text: #ffffff;
+    --theme-accent: #38bdf8;
+  }
+
+  [data-theme="sunset"] {
+    --theme-name: 'sunset';
+    --theme-primary: #ea580c;
+    --theme-primary-hover: #c2410c;
+    --theme-primary-light: #ffedd5;
+    --theme-primary-text: #ffffff;
+    --theme-accent: #f97316;
+  }
+
+  [data-theme="nord"] {
+    --theme-name: 'nord';
+    --theme-primary: #475569;
+    --theme-primary-hover: #334155;
+    --theme-primary-light: #f1f5f9;
+    --theme-primary-text: #ffffff;
+    --theme-accent: #0ea5e9;
+  }
+
+  [data-theme="lavender"] {
+    --theme-name: 'lavender';
+    --theme-primary: #7c3aed;
+    --theme-primary-hover: #6d28d9;
+    --theme-primary-light: #ede9fe;
+    --theme-primary-text: #ffffff;
+    --theme-accent: #a855f7;
+  }
+}
+
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.45);
+}

@@ -1,0 +1,6 @@
+{
+  "name": "NotionLife Personal Task Assistant",
+  "description": "An offline-first Notion-inspired personal task management and life operating system featuring drag-and-drop Kanban boards, block-based notes, daily agenda, habit tracking, and local SQLite/IndexedDB sync engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
